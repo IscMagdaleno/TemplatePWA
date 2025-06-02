@@ -28,7 +28,6 @@ namespace TemplatePWA.PWA.Areas.TestModul.Utiles
 		}
 
 		public async Task<SeverityMessage> PostTestTable()
-
 		{
 			var APIUrl = url + "/PostTestTable";
 
