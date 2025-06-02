@@ -1,0 +1,25 @@
+﻿@using TemplatePWA.Share.Objetos;
+
+
+<MudTable Items="@Data.LstTestTable"
+		  T="@TestTable"
+		  Dense="@true"
+		  Hover="true"
+		  RowsPerPage="15"
+		  Height="@("600px")"
+		  Striped="true">
+	<HeaderContent>
+
+		<MudTh>iIdTest_Table</MudTh>
+		<MudTh>vchName</MudTh>
+		<MudTh>vchEmail</MudTh>
+		<MudTh>dtRegistered</MudTh>
+	</HeaderContent>
+	<RowTemplate>
+		<MudTd DataLabel="iIdTest_Table">@context.iIdTest_Table</MudTd>
+		<MudTd DataLabel="vchName">@context.vchName</MudTd>
+		<MudTd DataLabel="vchEmail">@context.vchEmail</MudTd>
+		<MudTd DataLabel="dtRegistered">@context.dtRegistered</MudTd>
+	</RowTemplate>
+</MudTable>
+ 

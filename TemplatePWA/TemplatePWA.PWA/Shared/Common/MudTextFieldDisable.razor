@@ -1,0 +1,18 @@
+﻿
+
+
+
+<MudTextField Value="@Value"
+			  Variant="Variant.Outlined"
+			  Adornment="Adornment.Start"
+			  AdornmentColor="Color.Primary"
+			  Disabled="true"
+			  AdornmentText="@(Title+" : ")" />
+
+@code {
+
+	[Parameter] public string Title { get; set; }
+
+	[Parameter] public string Value { get; set; }
+
+}

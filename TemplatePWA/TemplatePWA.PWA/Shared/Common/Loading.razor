@@ -1,0 +1,42 @@
+﻿@using TemplatePWA.PWA.Helpers;
+
+@inject LoadingState _spinnerService
+
+@if (IsVisible)
+{
+
+	<MudOverlay Visible="IsVisible" DarkBackground="true">
+
+@* 		<MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+		<MudProgressLinear Color="Color.Secondary" Indeterminate="true" Class="my-7" />
+ *@
+		<MudProgressCircular Color="Color.Default" Indeterminate="true" />
+	</MudOverlay>
+
+
+}
+@code
+{
+	protected bool IsVisible { get; set; }
+	protected override void OnInitialized()
+	{
+		_spinnerService.OnShow += ShowLoadingSpinner;
+		_spinnerService.OnHide += HideLoadingSpinner;
+	}
+
+	public void ShowLoadingSpinner()
+	{
+		IsVisible = true;
+		if (IsVisible == true)
+			StateHasChanged();
+	}
+
+	public void HideLoadingSpinner()
+	{
+		IsVisible = false;
+		//  await Task.Delay(1);
+
+		if (IsVisible == false)
+			StateHasChanged();
+	}
+}
