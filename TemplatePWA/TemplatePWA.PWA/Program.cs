@@ -15,8 +15,7 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 
-var url = "https://apiengramaconsultas.azurewebsites.net";
-//url = "https://localhost:7196/"; --//Aqui ira la URL de tu API en Local
+var url = "https://localhost:7196/";
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(url) });
 
