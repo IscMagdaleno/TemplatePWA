@@ -1,19 +1,13 @@
-﻿using EngramaCoreStandar.Dapper.Results;
-using EngramaCoreStandar.Extensions;
-
-using Microsoft.AspNetCore.Components;
-
-using MudBlazor;
+﻿using Microsoft.AspNetCore.Components;
 
 using TemplatePWA.PWA.Areas.TestModul.Utiles;
-using TemplatePWA.PWA.Helpers;
+using TemplatePWA.PWA.Shared.Common;
 
 namespace TemplatePWA.PWA.Areas.TestModul.Components
 {
-	public partial class TableTestTable
+	public partial class TableTestTable : EngramaComponent
 	{
-		[Inject] private LoadingState Loading { get; set; }
-		[Inject] private ISnackbar Snackbar { get; set; }
+
 		[Parameter] public DataTest Data { get; set; }
 
 		protected override void OnInitialized()
@@ -30,16 +24,7 @@ namespace TemplatePWA.PWA.Areas.TestModul.Components
 
 
 
-		public void ShowSnake(SeverityMessage severityMessage)
-		{
-			if (severityMessage.vchMessage.NotEmpty())
-			{
 
-				Snackbar.Clear();
-				Snackbar.Configuration.PositionClass = Defaults.Classes.Position.TopCenter;
-				Snackbar.Add(severityMessage.vchMessage, MudBlazorConverter.ConvertSeverity(severityMessage.Severity));
-			}
-		}
 
 	}
 }
