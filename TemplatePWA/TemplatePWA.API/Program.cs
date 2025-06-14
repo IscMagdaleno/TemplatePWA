@@ -1,7 +1,4 @@
-using EngramaCoreStandar.Dapper;
-using EngramaCoreStandar.Logger;
-using EngramaCoreStandar.Mapper;
-using EngramaCoreStandar.Results;
+using EngramaCoreStandar.Extensions;
 
 using System.Reflection;
 
@@ -23,13 +20,9 @@ builder.Services.AddScoped<ITestDominio, TestDominio>();
 builder.Services.AddScoped<ITestRepository, TestRepository>();
 
 
+// Ensure the AddEngramaDependenciesAPI method is defined in the above namespace
+builder.Services.AddEngramaDependenciesAPI();
 
-/*Engrama services to Dapper and logger*/
-builder.Services.AddScoped<IResponseHelper, ResponseHelper>();
-builder.Services.AddScoped<IDapperManager, DapperManager>();
-builder.Services.AddScoped<IDapperManagerHelper, DapperMangerHelper>();
-builder.Services.AddScoped<ILoggerHelper, LoggerHelper>();
-builder.Services.AddSingleton<MapperHelper>(); // MapperHelper como singleton porque maneja su propia configuración
 
 
 /*Swagger configuration*/

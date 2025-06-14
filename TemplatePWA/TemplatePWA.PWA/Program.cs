@@ -1,6 +1,4 @@
-using EngramaCoreStandar.Logger;
-using EngramaCoreStandar.Mapper;
-using EngramaCoreStandar.Servicios;
+using EngramaCoreStandar.Extensions;
 
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -25,10 +23,7 @@ builder.Services.AddMudServices();
 
 /*Engrama -> Services to call the API using the engrama Tools*/
 builder.Services.AddScoped<LoadingState>();
-builder.Services.AddScoped<IValidaServicioService, ValidaServicioService>();
-builder.Services.AddScoped<IHttpService, HttpService>();
-builder.Services.AddScoped<ILoggerHelper, LoggerHelper>();
-builder.Services.AddSingleton<MapperHelper>(); // MapperHelper como singleton porque maneja su propia configuración
 
+builder.Services.AddEngramaDependenciesBlazor();
 
 await builder.Build().RunAsync();
