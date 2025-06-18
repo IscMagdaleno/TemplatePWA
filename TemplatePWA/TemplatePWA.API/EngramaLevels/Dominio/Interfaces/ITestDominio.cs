@@ -8,6 +8,7 @@ namespace TemplatePWA.API.EngramaLevels.Dominio.Interfaces
 {
 	public interface ITestDominio
 	{
-		Task<Response<IEnumerable<TestTable>>> TestTable(PostTestTable DAOmodel);
+		Task<Response<Test_Table>> SaveTest_Table(PostSaveTest_Table PostModel);
+		Task<Response<IEnumerable<Test_Table>>> TestTable(PostTestTable DAOmodel);
 	}
 }

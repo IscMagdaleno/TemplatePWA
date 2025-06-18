@@ -17,14 +17,14 @@ namespace TemplatePWA.PWA.Areas.TestModul.Utiles
 		private readonly MapperHelper mapperHelper;
 		private readonly IValidaServicioService validaServicioService;
 
-		public IList<TestTable> LstTestTable { get; set; }
+		public IList<Test_Table> LstTestTable { get; set; }
 
 		public DataTest(IHttpService httpService, MapperHelper mapperHelper, IValidaServicioService validaServicioService)
 		{
 			_httpService = httpService;
 			this.mapperHelper = mapperHelper;
 			this.validaServicioService = validaServicioService;
-			LstTestTable = new List<TestTable>();
+			LstTestTable = new List<Test_Table>();
 		}
 
 		public async Task<SeverityMessage> PostTestTable()
@@ -33,7 +33,7 @@ namespace TemplatePWA.PWA.Areas.TestModul.Utiles
 
 			var model = new PostTestTable();
 
-			var response = await _httpService.Post<PostTestTable, Response<List<TestTable>>>(APIUrl, model);
+			var response = await _httpService.Post<PostTestTable, Response<List<Test_Table>>>(APIUrl, model);
 			var validacion = validaServicioService.ValidadionServicio(response,
 				onSuccess: data => LstTestTable = data.ToList());
 

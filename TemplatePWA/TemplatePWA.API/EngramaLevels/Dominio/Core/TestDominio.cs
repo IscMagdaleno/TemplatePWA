@@ -37,19 +37,40 @@ namespace TemplatePWA.API.EngramaLevels.Dominio.Core
 
 
 
-		public async Task<Response<IEnumerable<TestTable>>> TestTable(PostTestTable DAOmodel)
+		public async Task<Response<IEnumerable<Test_Table>>> TestTable(PostTestTable DAOmodel)
 		{
 			try
 			{
 				var model = mapperHelper.Get<PostTestTable, spGetTestTable.Request>(DAOmodel);
 
 				var result = await testRepository.spGetTestTable(model);
-				return responseHelper.Validacion<spGetTestTable.Result, TestTable>(result);
+				return responseHelper.Validacion<spGetTestTable.Result, Test_Table>(result);
 			}
 			catch (Exception ex)
 			{
-				return Response<IEnumerable<TestTable>>.BadResult(ex.Message, new List<TestTable>());
+				return Response<IEnumerable<Test_Table>>.BadResult(ex.Message, new List<Test_Table>());
 			}
 		}
+
+		public async Task<Response<Test_Table>> SaveTest_Table(PostSaveTest_Table PostModel)
+		{
+			try
+			{
+				var model = mapperHelper.Get<PostSaveTest_Table, spSaveTest_Table.Request>(PostModel);
+				var result = await testRepository.spSaveTest_Table(model);
+				var validation = responseHelper.Validacion<spSaveTest_Table.Result, Test_Table>(result);
+				if (validation.IsSuccess)
+				{
+					PostModel.iIdTest_Table = validation.Data.iIdTest_Table;
+					validation.Data = mapperHelper.Get<PostSaveTest_Table, Test_Table>(PostModel);
+				}
+				return validation;
+			}
+			catch (Exception ex)
+			{
+				return Response<Test_Table>.BadResult(ex.Message, new());
+			}
+		}
+
 	}
 }

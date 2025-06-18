@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="EngramaCoreStandar" Version="1.0.5" />
+    <PackageReference Include="EngramaCoreStandar" Version="1.0.6" />
   </ItemGroup>
 
 </Project>

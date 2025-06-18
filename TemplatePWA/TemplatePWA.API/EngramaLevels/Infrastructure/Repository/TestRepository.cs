@@ -1,4 +1,5 @@
 ﻿using EngramaCoreStandar.Dapper;
+using EngramaCoreStandar.Extensions;
 
 using TemplatePWA.API.EngramaLevels.Infrastructure.Interfaces;
 using TemplatePWA.Share.Entity;
@@ -38,6 +39,17 @@ namespace TemplatePWA.API.EngramaLevels.Infrastructure.Repository
 			}
 			return new List<spGetTestTable.Result>() { new() { bResult = false, vchMessage = respuesta.Msg } };
 
+		}
+
+
+		public async Task<spSaveTest_Table.Result> spSaveTest_Table(spSaveTest_Table.Request PostModel)
+		{
+			var result = await _managerHelper.GetAsync<spSaveTest_Table.Result, spSaveTest_Table.Request>(PostModel);
+			if (result.Ok)
+			{
+				return result.Data;
+			}
+			return new() { bResult = false, vchMessage = $"[{(result.Ex.NotNull() ? result.Ex.Message : "")}] - [{result.Msg}]" };
 		}
 
 	}

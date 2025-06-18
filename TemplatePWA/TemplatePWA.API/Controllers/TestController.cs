@@ -37,5 +37,23 @@ namespace TemplatePWA.API.Controllers
 			return BadRequest(result);
 		}
 
+
+		/// <summary>
+		/// Guardar informacion de pruebas
+		/// </summary>
+		/// <param name="postModel"></param>
+		/// <returns></returns>
+		[HttpPost("PostSaveTest_Table")]
+		public async Task<IActionResult> PostSaveTest_Table([FromBody] PostSaveTest_Table postModel)
+		{
+			var result = await testDominio.SaveTest_Table(postModel);
+			if (result.IsSuccess)
+			{
+				return Ok(result);
+			}
+			return BadRequest(result);
+		}
+
+
 	}
 }
