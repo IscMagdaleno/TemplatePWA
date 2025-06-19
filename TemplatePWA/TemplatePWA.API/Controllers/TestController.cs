@@ -54,6 +54,22 @@ namespace TemplatePWA.API.Controllers
 			return BadRequest(result);
 		}
 
+		/// <summary>
+		/// Consultar la base de datos enviando una lista de objetos
+		/// </summary>
+		/// <param name="postModel"></param>
+		/// <returns></returns>
+		[HttpPost("PostGetTestTableDataType")]
+		public async Task<IActionResult> PostGetTestTableDataType([FromBody] PostGetTestTableDataType postModel)
+		{
+			var result = await testDominio.GetTestTableDataType(postModel);
+			if (result.IsSuccess)
+			{
+				return Ok(result);
+			}
+			return BadRequest(result);
+		}
+
 
 	}
 }

@@ -52,5 +52,15 @@ namespace TemplatePWA.API.EngramaLevels.Infrastructure.Repository
 			return new() { bResult = false, vchMessage = $"[{(result.Ex.NotNull() ? result.Ex.Message : "")}] - [{result.Msg}]" };
 		}
 
+		public async Task<spGetTestTableDataType.Result> spGetTestTableDataType(spGetTestTableDataType.Request PostModel)
+		{
+			var result = await _managerHelper.GetWithListAsync<spGetTestTableDataType.Result, spGetTestTableDataType.Request>(PostModel);
+			if (result.Ok)
+			{
+				return result.Data;
+			}
+			return new() { bResult = false, vchMessage = $"[{(result.Ex.NotNull() ? result.Ex.Message : "")}] - [{result.Msg}]" };
+		}
+
 	}
 }

@@ -1,5 +1,6 @@
 ﻿// Ignore Spelling: Dominio
 
+using EngramaCoreStandar;
 using EngramaCoreStandar.Mapper;
 using EngramaCoreStandar.Results;
 
@@ -71,6 +72,40 @@ namespace TemplatePWA.API.EngramaLevels.Dominio.Core
 				return Response<Test_Table>.BadResult(ex.Message, new());
 			}
 		}
+
+
+		public async Task<Response<Test_Table>> GetTestTableDataType(PostGetTestTableDataType PostModel)
+		{
+			try
+			{
+				var model = mapperHelper.Get<PostGetTestTableDataType, spGetTestTableDataType.Request>(PostModel);
+
+				//business logic
+				var lista = new List<DTParameterType>();
+
+				lista.Add(new DTParameterType
+				{
+					vchParameter = "valor",
+					dtParameter = Defaults.SqlMinDate()
+				});
+				model.Parameters = lista;
+
+
+				var result = await testRepository.spGetTestTableDataType(model);
+				var validation = responseHelper.Validacion<spGetTestTableDataType.Result, Test_Table>(result);
+				if (validation.IsSuccess)
+				{
+					PostModel.vchEmail = validation.Data.vchEmail;
+					validation.Data = mapperHelper.Get<PostGetTestTableDataType, Test_Table>(PostModel);
+				}
+				return validation;
+			}
+			catch (Exception ex)
+			{
+				return Response<Test_Table>.BadResult(ex.Message, new());
+			}
+		}
+
 
 	}
 }
