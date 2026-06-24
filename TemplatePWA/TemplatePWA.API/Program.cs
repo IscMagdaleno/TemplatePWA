@@ -2,8 +2,8 @@ using EngramaCoreStandar.Extensions;
 
 using System.Reflection;
 
-using TemplatePWA.API.EngramaLevels.Dominio.Core;
-using TemplatePWA.API.EngramaLevels.Dominio.Interfaces;
+using TemplatePWA.API.EngramaLevels.Domain.Core;
+using TemplatePWA.API.EngramaLevels.Domain.Interfaces;
 using TemplatePWA.API.EngramaLevels.Infrastructure.Interfaces;
 using TemplatePWA.API.EngramaLevels.Infrastructure.Repository;
 
@@ -16,7 +16,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 
-builder.Services.AddScoped<ITestDominio, TestDominio>();
+builder.Services.AddScoped<ITestDominio, TestDomain>();
 builder.Services.AddScoped<ITestRepository, TestRepository>();
 
 

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-using TemplatePWA.API.EngramaLevels.Dominio.Interfaces;
-using TemplatePWA.Share.PostClass;
+using TemplatePWA.API.EngramaLevels.Domain.Interfaces;
+using TemplatePWA.Share.DtoModels.TestModule;
 
 namespace TemplatePWA.API.Controllers
 {
@@ -26,11 +26,10 @@ namespace TemplatePWA.API.Controllers
 		/// <param name="postModel"></param>
 		/// <returns></returns>
 		[HttpPost("PostTestTable")]
-		public async Task<IActionResult> PostTestTable([FromBody] PostTestTable postModel)
+		public async Task<IActionResult> PostTestTable([FromBody] DtoTestTable postModel)
 		{
 			var result = await testDominio.TestTable(postModel);
 			if (result.IsSuccess)
-
 			{
 				return Ok(result);
 			}
@@ -44,7 +43,7 @@ namespace TemplatePWA.API.Controllers
 		/// <param name="postModel"></param>
 		/// <returns></returns>
 		[HttpPost("PostSaveTest_Table")]
-		public async Task<IActionResult> PostSaveTest_Table([FromBody] PostSaveTest_Table postModel)
+		public async Task<IActionResult> PostSaveTest_Table([FromBody] DtoaveTest_Table postModel)
 		{
 			var result = await testDominio.SaveTest_Table(postModel);
 			if (result.IsSuccess)
@@ -60,7 +59,7 @@ namespace TemplatePWA.API.Controllers
 		/// <param name="postModel"></param>
 		/// <returns></returns>
 		[HttpPost("PostGetTestTableDataType")]
-		public async Task<IActionResult> PostGetTestTableDataType([FromBody] PostGetTestTableDataType postModel)
+		public async Task<IActionResult> PostGetTestTableDataType([FromBody] DtoGetTestTableDataType postModel)
 		{
 			var result = await testDominio.GetTestTableDataType(postModel);
 			if (result.IsSuccess)

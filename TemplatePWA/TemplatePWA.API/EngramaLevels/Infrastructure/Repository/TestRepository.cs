@@ -1,8 +1,8 @@
 ﻿using EngramaCoreStandar.Dapper;
 using EngramaCoreStandar.Extensions;
 
+using TemplatePWA.API.EngramaLevels.Infrastructure.Entity;
 using TemplatePWA.API.EngramaLevels.Infrastructure.Interfaces;
-using TemplatePWA.Share.Entity;
 
 namespace TemplatePWA.API.EngramaLevels.Infrastructure.Repository
 {

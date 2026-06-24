@@ -1,11 +1,10 @@
-﻿namespace TemplatePWA.Share.PostClass
+﻿namespace TemplatePWA.Share.Objects.TestModule
 {
-	public class PostSaveTest_Table
+	public class Test_Table
 	{
 		public int iIdTest_Table { get; set; }
 		public string vchName { get; set; }
 		public string vchEmail { get; set; }
 		public DateTime dtRegistered { get; set; }
 	}
-
 }

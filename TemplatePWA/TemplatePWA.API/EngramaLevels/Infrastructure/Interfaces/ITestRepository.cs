@@ -1,4 +1,5 @@
-﻿using TemplatePWA.Share.Entity;
+﻿
+using TemplatePWA.API.EngramaLevels.Infrastructure.Entity;
 
 namespace TemplatePWA.API.EngramaLevels.Infrastructure.Interfaces
 {

@@ -4,21 +4,20 @@ using EngramaCoreStandar;
 using EngramaCoreStandar.Mapper;
 using EngramaCoreStandar.Results;
 
-using TemplatePWA.API.EngramaLevels.Dominio.Interfaces;
-
+using TemplatePWA.API.EngramaLevels.Domain.Interfaces;
+using TemplatePWA.API.EngramaLevels.Infrastructure.Entity;
 using TemplatePWA.API.EngramaLevels.Infrastructure.Interfaces;
-using TemplatePWA.Share.Entity;
-using TemplatePWA.Share.Objetos;
-using TemplatePWA.Share.PostClass;
+using TemplatePWA.Share.DtoModels.TestModule;
+using TemplatePWA.Share.Objects.TestModule;
 
-namespace TemplatePWA.API.EngramaLevels.Dominio.Core
+namespace TemplatePWA.API.EngramaLevels.Domain.Core
 {
 
 	/// <summary>
 	/// Class where save all the core code and the logic business,
 	/// and convert the data base response to object to get back the user
 	/// </summary>
-	public class TestDominio : ITestDominio
+	public class TestDomain : ITestDominio
 	{
 		private readonly ITestRepository testRepository;
 		private readonly MapperHelper mapperHelper;
@@ -27,7 +26,7 @@ namespace TemplatePWA.API.EngramaLevels.Dominio.Core
 		/// <summary>
 		/// Initialize the fields receiving the interfaces on the builder
 		/// </summary>
-		public TestDominio(ITestRepository testRepository,
+		public TestDomain(ITestRepository testRepository,
 			MapperHelper mapperHelper,
 			IResponseHelper responseHelper)
 		{
@@ -38,11 +37,11 @@ namespace TemplatePWA.API.EngramaLevels.Dominio.Core
 
 
 
-		public async Task<Response<IEnumerable<Test_Table>>> TestTable(PostTestTable DAOmodel)
+		public async Task<Response<IEnumerable<Test_Table>>> TestTable(DtoTestTable DAOmodel)
 		{
 			try
 			{
-				var model = mapperHelper.Get<PostTestTable, spGetTestTable.Request>(DAOmodel);
+				var model = mapperHelper.Get<DtoTestTable, spGetTestTable.Request>(DAOmodel);
 
 				var result = await testRepository.spGetTestTable(model);
 				return responseHelper.Validacion<spGetTestTable.Result, Test_Table>(result);
@@ -53,17 +52,17 @@ namespace TemplatePWA.API.EngramaLevels.Dominio.Core
 			}
 		}
 
-		public async Task<Response<Test_Table>> SaveTest_Table(PostSaveTest_Table PostModel)
+		public async Task<Response<Test_Table>> SaveTest_Table(DtoaveTest_Table PostModel)
 		{
 			try
 			{
-				var model = mapperHelper.Get<PostSaveTest_Table, spSaveTest_Table.Request>(PostModel);
+				var model = mapperHelper.Get<DtoaveTest_Table, spSaveTest_Table.Request>(PostModel);
 				var result = await testRepository.spSaveTest_Table(model);
 				var validation = responseHelper.Validacion<spSaveTest_Table.Result, Test_Table>(result);
 				if (validation.IsSuccess)
 				{
 					PostModel.iIdTest_Table = validation.Data.iIdTest_Table;
-					validation.Data = mapperHelper.Get<PostSaveTest_Table, Test_Table>(PostModel);
+					validation.Data = mapperHelper.Get<DtoaveTest_Table, Test_Table>(PostModel);
 				}
 				return validation;
 			}
@@ -74,16 +73,16 @@ namespace TemplatePWA.API.EngramaLevels.Dominio.Core
 		}
 
 
-		public async Task<Response<Test_Table>> GetTestTableDataType(PostGetTestTableDataType PostModel)
+		public async Task<Response<Test_Table>> GetTestTableDataType(DtoGetTestTableDataType PostModel)
 		{
 			try
 			{
-				var model = mapperHelper.Get<PostGetTestTableDataType, spGetTestTableDataType.Request>(PostModel);
+				var model = mapperHelper.Get<DtoGetTestTableDataType, spGetTestTableDataType.Request>(PostModel);
 
 				//business logic
-				var lista = new List<DTParameterType>();
+				var lista = new List<Infrastructure.Entity.DTParameterType>();
 
-				lista.Add(new DTParameterType
+				lista.Add(new Infrastructure.Entity.DTParameterType
 				{
 					vchParameter = "valor",
 					dtParameter = Defaults.SqlMinDate()
@@ -96,7 +95,7 @@ namespace TemplatePWA.API.EngramaLevels.Dominio.Core
 				if (validation.IsSuccess)
 				{
 					PostModel.vchEmail = validation.Data.vchEmail;
-					validation.Data = mapperHelper.Get<PostGetTestTableDataType, Test_Table>(PostModel);
+					validation.Data = mapperHelper.Get<DtoGetTestTableDataType, Test_Table>(PostModel);
 				}
 				return validation;
 			}

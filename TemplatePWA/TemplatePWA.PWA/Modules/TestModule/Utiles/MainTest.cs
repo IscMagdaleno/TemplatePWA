@@ -3,12 +3,12 @@ using EngramaCoreStandar.Mapper;
 using EngramaCoreStandar.Results;
 using EngramaCoreStandar.Servicios;
 
-using TemplatePWA.Share.Objetos;
-using TemplatePWA.Share.PostClass;
+using TemplatePWA.Share.DtoModels.TestModule;
+using TemplatePWA.Share.Objects.TestModule;
 
-namespace TemplatePWA.PWA.Areas.TestModul.Utiles
+namespace TemplatePWA.PWA.Modules.TestModule.Utiles
 {
-	public class DataTest
+	public class MainTest
 	{
 
 		private string url = @"api/Test";
@@ -19,7 +19,7 @@ namespace TemplatePWA.PWA.Areas.TestModul.Utiles
 
 		public IList<Test_Table> LstTestTable { get; set; }
 
-		public DataTest(IHttpService httpService, MapperHelper mapperHelper, IValidaServicioService validaServicioService)
+		public MainTest(IHttpService httpService, MapperHelper mapperHelper, IValidaServicioService validaServicioService)
 		{
 			_httpService = httpService;
 			this.mapperHelper = mapperHelper;
@@ -31,9 +31,9 @@ namespace TemplatePWA.PWA.Areas.TestModul.Utiles
 		{
 			var APIUrl = url + "/PostTestTable";
 
-			var model = new PostTestTable();
+			var model = new DtoTestTable();
 
-			var response = await _httpService.Post<PostTestTable, Response<List<Test_Table>>>(APIUrl, model);
+			var response = await _httpService.Post<DtoTestTable, Response<List<Test_Table>>>(APIUrl, model);
 			var validacion = validaServicioService.ValidadionServicio(response,
 				onSuccess: data => LstTestTable = data.ToList());
 

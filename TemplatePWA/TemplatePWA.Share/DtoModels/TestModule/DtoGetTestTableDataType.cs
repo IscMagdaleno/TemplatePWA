@@ -1,5 +1,12 @@
-﻿namespace TemplatePWA.Share.Entity
+﻿namespace TemplatePWA.Share.DtoModels.TestModule
 {
+	public class DtoGetTestTableDataType
+	{
+		public string vchEmail { get; set; }
+		public DateTime dtRegistered { get; set; }
+		public IEnumerable<DTParameterType> Parameters { get; set; }
+	}
+
 	public class DTParameterType
 	{
 		public int iParameter { get; set; }

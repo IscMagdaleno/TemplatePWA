@@ -1,7 +1,7 @@
 ﻿
 using EngramaCoreStandar.Dapper.Interfaces;
 
-namespace TemplatePWA.Share.Entity
+namespace TemplatePWA.API.EngramaLevels.Infrastructure.Entity
 {
 	public class spGetTestTable
 	{

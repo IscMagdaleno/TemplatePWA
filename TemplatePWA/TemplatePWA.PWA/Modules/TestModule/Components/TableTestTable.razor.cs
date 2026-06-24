@@ -1,19 +1,14 @@
 ﻿using Microsoft.AspNetCore.Components;
 
-using TemplatePWA.PWA.Areas.TestModul.Utiles;
+using TemplatePWA.PWA.Modules.TestModule.Utiles;
 using TemplatePWA.PWA.Shared.Common;
 
-namespace TemplatePWA.PWA.Areas.TestModul.Components
+namespace TemplatePWA.PWA.Modules.TestModule.Components
 {
 	public partial class TableTestTable : EngramaComponent
 	{
 
-		[Parameter] public DataTest Data { get; set; }
-
-		protected override void OnInitialized()
-		{
-
-		}
+		[Parameter] public MainTest Data { get; set; }
 
 		protected override async Task OnInitializedAsync()
 		{
@@ -21,10 +16,6 @@ namespace TemplatePWA.PWA.Areas.TestModul.Components
 			ShowSnake(await Data.PostTestTable());
 			Loading.Hide();
 		}
-
-
-
-
 
 	}
 }
