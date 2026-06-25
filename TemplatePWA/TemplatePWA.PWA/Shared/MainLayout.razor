@@ -1,16 +1,11 @@
 ﻿@using TemplatePWA.PWA.Helpers
-@using TemplatePWA.PWA.Modules.TestModule.Utiles
-@using EngramaCoreStandar.Servicios
-@using EngramaCoreStandar.Mapper
+@using TemplatePWA.PWA.Shared.Workspace
+@using TemplatePWA.PWA.Shared.Common
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject WorkspaceService WorkspaceService
 @inject IJSRuntime JSRuntime
 @inject IDialogService DialogService
-@inject LoadingState LoadingState
-@inject IHttpService HttpService
-@inject MapperHelper MapperHelper
-@inject IValidaServicioService ValidaServicioService
 
 <MudThemeProvider Theme="@_customTheme" />
 <MudDialogProvider />
@@ -34,9 +29,6 @@
                     <MudButton Href="/" Color="Color.Inherit" Class="nav-button mx-2" Style="color: white;">
                         Inicio
                     </MudButton>
-                    <MudButton OnClick="WorkspaceService.RequestTestTable" Color="Color.Inherit" Class="nav-button mx-2" Style="color: white;">
-                        Catálogo de Test Table
-                    </MudButton>
                 </div>
 
                 <div class="d-md-none">
@@ -53,10 +45,6 @@
                     <MudIcon Icon="@Icons.Material.Filled.Home" Class="mr-3" />
                     Inicio
                 </MudButton>
-                <MudButton OnClick="WorkspaceService.RequestTestTable" Color="Color.Inherit" FullWidth="true" Style="color: white; justify-content: flex-start;">
-                    <MudIcon Icon="@Icons.Material.Filled.TableChart" Class="mr-3" />
-                    Catálogo de Test Table
-                </MudButton>
             </MudStack>
         </MudContainer>
     </MudCollapse>
@@ -64,7 +52,7 @@
     <MudMainContent Style="padding-top: 80px; min-height: calc(100vh - 80px); background-color: transparent;">
         @if (tabsList.Count != 0)
         {
-            <TemplatePWA.PWA.Shared.Workspace.ToolbarSuperior />
+            <ToolbarSuperior OnCloseTab="CloseCurrentTabAsync" />
 
             <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" 
                      Class="glass-effect mx-4 mt-2 mb-4"
@@ -76,7 +64,7 @@
                     <MudTabPanel ID="@tab.Id">
                         <ChildContent>
                             <div class="pa-4">
-                                @tab.Componente
+                                <DynamicComponent Type="tab.TipoControl" Parameters="tab.Parameters" />
                             </div>
                         </ChildContent>
                         <TabContent>
@@ -88,11 +76,11 @@
                                         <MudIconButton Icon="@Icons.Material.Filled.Close" 
                                                        Size="Size.Small" 
                                                        Class="ml-2 pa-1" 
-                                                       OnClick="@(async () => await CloseCurrentTabAsync(tab.EstadoControl == TipoEstadoControl.Alta || tab.EstadoControl == TipoEstadoControl.Edicion, tab.Id))" />
+                                                       OnClick="@(async () => await CloseCurrentTabAsync())" />
                                     </div>
                                 </ActivatorContent>
                                 <ChildContent>
-                                    <MudMenuItem Icon="@Icons.Material.Filled.Close" OnClick="@(async () => await CloseCurrentTabAsync(tab.EstadoControl == TipoEstadoControl.Alta || tab.EstadoControl == TipoEstadoControl.Edicion, tab.Id))">Cerrar pestaña</MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Close" OnClick="@(async () => await CloseCurrentTabAsync())">Cerrar pestaña</MudMenuItem>
                                     <MudMenuItem Icon="@Icons.Material.Filled.CloseFullscreen" OnClick="CloseOtherTabsAsync">Cerrar las demás</MudMenuItem>
                                     <MudMenuItem Icon="@Icons.Material.Filled.DeleteSweep" OnClick="CloseAllTabsAsync" Disabled="@(tabsList.Count <= 1)">Cerrar todas</MudMenuItem>
                                 </ChildContent>
@@ -100,7 +88,7 @@
                         </TabContent>
                     </MudTabPanel>
                 }
-            </MudTabs>
+            </MudTabs> 
         }
         else
         {
@@ -111,7 +99,6 @@
 
 @code {
     private bool _mobileMenuOpen = false;
-
     private List<WorkspaceTab> tabsList = new List<WorkspaceTab>();
     private int tabsSelectedIndex = 0;
 
@@ -121,15 +108,12 @@
         WorkspaceService.MenuChanged += () => InvokeAsync(StateHasChanged);
         WorkspaceService.TabNameChanged += RenameCurrentTab;
         WorkspaceService.TabStateChanged += SetTabState;
-        WorkspaceService.CloseCurrentTab += async (withWarning) => await CloseCurrentTabAsync(withWarning);
-        
-        WorkspaceService.OnTestTableRequest += AbrirTestTableEnTab;
+        WorkspaceService.CloseCurrentTab += async (withWarning) => await CloseCurrentTabAsync();
     }
 
     public void Dispose()
     {
         WorkspaceService.OnMenuTabSelected -= AddTab;
-        WorkspaceService.OnTestTableRequest -= AbrirTestTableEnTab;
     }
 
     private void RenameCurrentTab(string tabName, string iconText)
@@ -155,90 +139,40 @@
         if (index >= 0 && index < tabsList.Count)
         {
             tabsSelectedIndex = index;
-            var activeTab = tabsList.ElementAtOrDefault(index);
-
-            if (activeTab?.InstanciaComponente != null)
-            {
-                activeTab.InstanciaComponente.TriggerMenuUpdate();
-            }
-            else
-            {
-                WorkspaceService.SetMenuItems(new List<MenuItemModel>());
-            }
         }
     }
 
     private void AddTab(WorkspaceTab tab)
     {
-        if (tab.Repetir)
+        var existing = tabsList.FirstOrDefault(t => t.TipoControl == tab.TipoControl && tab.Parameters.ContainsKey("IsNewTab") == false);
+        if (existing != null)
         {
-            tabsList.Add(tab);
-            tabsSelectedIndex = tabsList.Count - 1;
-            base.StateHasChanged();
+            tabsSelectedIndex = tabsList.IndexOf(existing);
+            StateHasChanged();
             return;
         }
 
-        var instanciaTab = tabsList
-            .Select((t, index) => new { Tab = t, Index = index })
-            .FirstOrDefault(m => m.Tab.TipoControl == tab.TipoControl);
-
-        if (instanciaTab != null)
-        {
-            tabsSelectedIndex = instanciaTab.Index;
-            OnTabChanged(tabsSelectedIndex);
-        }
-        else
-        {
-            tabsList.Add(tab);
-            tabsSelectedIndex = tabsList.Count - 1;
-        }
-
+        tabsList.Add(tab);
+        tabsSelectedIndex = tabsList.Count - 1;
         base.StateHasChanged();
     }
 
-    private async Task CloseCurrentTabAsync(bool withWarning = false, Guid? specificTabId = null)
+    private async Task CloseCurrentTabAsync()
     {
-        bool canClose = true;
-        int indexToRemove = tabsSelectedIndex;
+        if (!tabsList.Any()) return;
 
-        if (specificTabId.HasValue)
+        tabsList.RemoveAt(tabsSelectedIndex);
+        tabsSelectedIndex = Math.Max(0, tabsList.Count - 1);
+        
+        base.StateHasChanged();
+        
+        if (!tabsList.Any())
         {
-            indexToRemove = tabsList.FindIndex(t => t.Id == specificTabId.Value);
-            if (indexToRemove < 0) return;
-        }
-
-        if (withWarning)
-        {
-            var parameters = new DialogParameters { { "ContentText", "Tienes cambios sin guardar en esta pestaña. ¿Seguro que deseas cerrarla?" } };
-            canClose = true;
-        }
-
-        if (canClose)
-        {
-            tabsList.RemoveAt(indexToRemove);
-            
-            if (tabsSelectedIndex >= tabsList.Count)
-            {
-                tabsSelectedIndex = Math.Max(0, tabsList.Count - 1);
-            }
-            else if (indexToRemove < tabsSelectedIndex)
-            {
-                tabsSelectedIndex--;
-            }
-            
-            base.StateHasChanged();
-            if (tabsList.Any())
-            {
-                OnTabChanged(tabsSelectedIndex);
-            }
-            else
-            {
-                WorkspaceService.SetMenuItems(new List<MenuItemModel>());
-            }
+            WorkspaceService.SetMenuItems(new List<MenuItemModel>());
         }
     }
 
-    private async Task CloseOtherTabsAsync()
+    private void CloseOtherTabsAsync()
     {
         var activeTab = tabsList[tabsSelectedIndex];
         tabsList.Clear();
@@ -247,43 +181,12 @@
         StateHasChanged();
     }
 
-    private async Task CloseAllTabsAsync()
+    private void CloseAllTabsAsync()
     {
         tabsList.Clear();
         tabsSelectedIndex = 0;
         WorkspaceService.SetMenuItems(new List<MenuItemModel>());
         StateHasChanged();
-    }
-
-    private void AbrirTestTableEnTab()
-    {
-        CloseMobileMenu();
-        var type = typeof(TemplatePWA.PWA.Modules.TestModule.Components.GridTestTable);
-        var tab = new WorkspaceTab
-        {
-            Icono = Icons.Material.Filled.TableChart,
-            Text = "Catálogo de Test Table",
-            TipoControl = type,
-            Repetir = false 
-        };
-
-        tab.Componente = builder =>
-        {
-            builder.OpenComponent(0, type);
-            builder.AddAttribute(1, "Data", new MainTest(HttpService, MapperHelper, ValidaServicioService));
-            builder.AddComponentReferenceCapture(2, instance =>
-            {
-                if (instance is EngramaWorkspaceComponent baseComponent)
-                {
-                    tab.InstanciaComponente = baseComponent;
-                    baseComponent.IconoBase = tab.Icono ?? "";
-                    baseComponent.TriggerMenuUpdate();
-                }
-            });
-            builder.CloseComponent();
-        };
-
-        WorkspaceService.AddComponenteTab(tab);
     }
 
     private void ToggleMobileMenu()

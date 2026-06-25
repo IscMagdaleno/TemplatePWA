@@ -12,7 +12,16 @@ namespace TemplatePWA.PWA.Modules.TestModule.Components
     public partial class FormTestTable : EngramaComponent
     {
         [Parameter] public MainTest Data { get; set; }
-        [Parameter] public EventCallback OnSuccess { get; set; }
+        [Parameter] public TipoEstadoControl EstadoControl { get; set; }
+
+        protected override void OnInitialized()
+        {
+            if (Data?.RegistroSeleccionado == null)
+            {
+                Data.RegistroSeleccionado = new TemplatePWA.Share.Objects.TestModule.Test_Table();
+            }
+            SetMenuItems(GetMenuItems());
+        }
 
         private async Task Submit()
         {
@@ -28,9 +37,8 @@ namespace TemplatePWA.PWA.Modules.TestModule.Components
             if (result.bResult)
             {
                 EstadoControl = TipoEstadoControl.Lectura;
-                SetNombreTab("Registro Guardado");
-                TriggerMenuUpdate();
-                await OnSuccess.InvokeAsync();
+                WorkspaceService.SetCurrentTabName("Registro Guardado", Icons.Material.Filled.Check);
+                WorkspaceService.SetMenuItems(GetMenuItems());
             }
         }
 
@@ -47,7 +55,7 @@ namespace TemplatePWA.PWA.Modules.TestModule.Components
                     Color = Color.Primary,
                     Action = EventCallback.Factory.Create(this, () => {
                         EstadoControl = TipoEstadoControl.Edicion;
-                        TriggerMenuUpdate();
+                        WorkspaceService.SetMenuItems(GetMenuItems());
                     })
                 });
             }

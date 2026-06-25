@@ -13,111 +13,49 @@ namespace TemplatePWA.PWA.Modules.TestModule.Components
         [Parameter] public MainTest Data { get; set; }
         
         public string filtroTexto { get; set; } = "";
+        private bool _loaded = false;
 
         protected override async Task OnInitializedAsync()
         {
             Loading.Show();
             ShowSnake(await Data.PostGetRegistros());
             Loading.Hide();
+            _loaded = true;
+            SetMenuItems(GetMenuItems());
+        }
+
+        private void OpenFormTab(string icon, string text, TipoEstadoControl state)
+        {
+            Data.RegistroSeleccionado = new TemplatePWA.Share.Objects.TestModule.Test_Table();
+            var tab = new WorkspaceTab
+            {
+                Icono = icon,
+                Text = text,
+                TipoControl = typeof(FormTestTable),
+                Parameters = new Dictionary<string, object>
+                {
+                    ["Data"] = this.Data,
+                    ["EstadoControl"] = state
+                }
+            };
+            AgregarTab(tab);
         }
 
         private void OnClickShowForm()
         {
-            Data.RegistroSeleccionado = new TemplatePWA.Share.Objects.TestModule.Test_Table();
-            var type = typeof(FormTestTable);
-            var tab = new WorkspaceTab
-            {
-                Icono = Icons.Material.Filled.AddBox,
-                Text = "Nuevo Registro",
-                TipoControl = type,
-                Repetir = false,
-                EstadoControl = TipoEstadoControl.Alta
-            };
-
-            tab.Componente = builder =>
-            {
-                builder.OpenComponent(0, type);
-                builder.AddAttribute(1, "Data", this.Data);
-                builder.AddComponentReferenceCapture(2, instance =>
-                {
-                    if (instance is EngramaWorkspaceComponent baseComponent)
-                    {
-                        tab.InstanciaComponente = baseComponent;
-                        baseComponent.IconoBase = tab.Icono ?? "";
-                        baseComponent.EstadoControl = tab.EstadoControl;
-                        baseComponent.TriggerMenuUpdate();
-                    }
-                });
-                builder.CloseComponent();
-            };
-
-            AgregarTab(tab);
+            OpenFormTab(Icons.Material.Filled.AddBox, "Nuevo Registro", TipoEstadoControl.Alta);
         }
 
         private void OnViewRegistro(object registro)
         {
             Data.RegistroSeleccionado = (TemplatePWA.Share.Objects.TestModule.Test_Table)registro;
-            var type = typeof(FormTestTable);
-            var tab = new WorkspaceTab
-            {
-                Icono = Icons.Material.Filled.Visibility,
-                Text = "Ver Registro",
-                TipoControl = type,
-                Repetir = true,
-                EstadoControl = TipoEstadoControl.Lectura
-            };
-
-            tab.Componente = builder =>
-            {
-                builder.OpenComponent(0, type);
-                builder.AddAttribute(1, "Data", this.Data);
-                builder.AddComponentReferenceCapture(2, instance =>
-                {
-                    if (instance is EngramaWorkspaceComponent baseComponent)
-                    {
-                        tab.InstanciaComponente = baseComponent;
-                        baseComponent.IconoBase = tab.Icono ?? "";
-                        baseComponent.EstadoControl = tab.EstadoControl;
-                        baseComponent.TriggerMenuUpdate();
-                    }
-                });
-                builder.CloseComponent();
-            };
-
-            AgregarTab(tab);
+            OpenFormTab(Icons.Material.Filled.Visibility, "Ver Registro", TipoEstadoControl.Lectura);
         }
 
         private void OnEditRegistro(object registro)
         {
             Data.RegistroSeleccionado = (TemplatePWA.Share.Objects.TestModule.Test_Table)registro;
-            var type = typeof(FormTestTable);
-            var tab = new WorkspaceTab
-            {
-                Icono = Icons.Material.Filled.Edit,
-                Text = "Editar Registro",
-                TipoControl = type,
-                Repetir = true,
-                EstadoControl = TipoEstadoControl.Edicion
-            };
-
-            tab.Componente = builder =>
-            {
-                builder.OpenComponent(0, type);
-                builder.AddAttribute(1, "Data", this.Data);
-                builder.AddComponentReferenceCapture(2, instance =>
-                {
-                    if (instance is EngramaWorkspaceComponent baseComponent)
-                    {
-                        tab.InstanciaComponente = baseComponent;
-                        baseComponent.IconoBase = tab.Icono ?? "";
-                        baseComponent.EstadoControl = tab.EstadoControl;
-                        baseComponent.TriggerMenuUpdate();
-                    }
-                });
-                builder.CloseComponent();
-            };
-
-            AgregarTab(tab);
+            OpenFormTab(Icons.Material.Filled.Edit, "Editar Registro", TipoEstadoControl.Edicion);
         }
 
         protected override List<MenuItemModel> GetMenuItems()

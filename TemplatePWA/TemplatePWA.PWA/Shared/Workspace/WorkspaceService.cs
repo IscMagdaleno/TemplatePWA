@@ -39,11 +39,5 @@ namespace TemplatePWA.PWA.Shared.Workspace
         {
             CloseCurrentTab?.Invoke(withWarning);
         }
-
-        public event Action OnTestTableRequest;
-        public void RequestTestTable()
-        {
-            OnTestTableRequest?.Invoke();
-        }
     }
 }

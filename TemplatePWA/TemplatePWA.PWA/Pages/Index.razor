@@ -1,4 +1,12 @@
 @page "/"
+@using TemplatePWA.PWA.Shared.Workspace
+@using TemplatePWA.PWA.Modules.TestModule.Utiles
+@using EngramaCoreStandar.Servicios
+@using EngramaCoreStandar.Mapper
+@inject WorkspaceService WorkspaceService
+@inject IHttpService HttpService
+@inject MapperHelper MapperHelper
+@inject IValidaServicioService ValidaServicioService
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h3" Class="mb-4">Bienvenido a Engrama Template</MudText>
@@ -7,10 +15,30 @@
     </MudText>
     <MudCard Class="glass-card">
         <MudCardContent>
-            <MudText Typo="Typo.h6">Módulos Disponibles</MudText>
-            <MudText Typo="Typo.body2">
-                Haz clic en "Catálogo de Test Table" en la barra superior para abrir el módulo de ejemplo.
-            </MudText>
+            <MudText Typo="Typo.h6" Class="mb-2">Módulos Disponibles</MudText>
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       StartIcon="@Icons.Material.Filled.TableChart"
+                       OnClick="OpenTestTable">
+                Catálogo de Test Table
+            </MudButton>
         </MudCardContent>
     </MudCard>
 </MudContainer>
+
+@code {
+    private void OpenTestTable()
+    {
+        var tab = new WorkspaceTab
+        {
+            Icono = Icons.Material.Filled.TableChart,
+            Text = "Catálogo de Test Table",
+            TipoControl = typeof(Modules.TestModule.Components.GridTestTable),
+            Parameters = new Dictionary<string, object>
+            {
+                ["Data"] = new MainTest(HttpService, MapperHelper, ValidaServicioService)
+            }
+        };
+        WorkspaceService.AddComponenteTab(tab);
+    }
+}

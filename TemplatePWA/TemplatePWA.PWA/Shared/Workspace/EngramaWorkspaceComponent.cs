@@ -8,8 +8,6 @@ namespace TemplatePWA.PWA.Shared.Workspace
     {
         [Inject] protected WorkspaceService WorkspaceService { get; set; } = default!;
 
-        public string IconoBase = "Icons.Material.Filled.Info";
-
         private TipoEstadoControl _estadoControl = TipoEstadoControl.Lectura;
 
         public TipoEstadoControl EstadoControl
@@ -20,14 +18,9 @@ namespace TemplatePWA.PWA.Shared.Workspace
                 if (_estadoControl != value)
                 {
                     _estadoControl = value;
-                    OnEstadoControlChanged();
+                    WorkspaceService.SetCurrentTabState(_estadoControl);
                 }
             }
-        }
-
-        protected void OnEstadoControlChanged()
-        {
-            WorkspaceService.SetCurrentTabState(this._estadoControl);
         }
 
         protected void AgregarTab(WorkspaceTab tab)
@@ -35,30 +28,14 @@ namespace TemplatePWA.PWA.Shared.Workspace
             WorkspaceService.AddComponenteTab(tab);
         }
 
-        protected void SetNombreTab(string tabName)
-        {
-            string iconText = EstadoControl == TipoEstadoControl.Alta
-                ? "Icons.Material.Filled.Add"
-                : EstadoControl == TipoEstadoControl.Edicion
-                    ? "Icons.Material.Filled.Edit"
-                    : IconoBase;
-
-            WorkspaceService.SetCurrentTabName(tabName, iconText);
-        }
-
         protected void CerrarTab()
         {
-            WorkspaceService.SetCloseCurrentTab(this.EstadoControl == TipoEstadoControl.Alta || this.EstadoControl == TipoEstadoControl.Edicion);
+            WorkspaceService.SetCloseCurrentTab(EstadoControl == TipoEstadoControl.Alta || EstadoControl == TipoEstadoControl.Edicion);
         }
 
         protected void SetMenuItems(List<MenuItemModel> menuItems)
         {
             WorkspaceService.SetMenuItems(menuItems);
-        }
-
-        public void TriggerMenuUpdate()
-        {
-            WorkspaceService.SetMenuItems(GetMenuItems());
         }
 
         protected virtual List<MenuItemModel> GetMenuItems()
