@@ -1,7 +1,16 @@
-﻿@page "/"
+@page "/"
 
-<PageTitle>Index</PageTitle>
-
-<MudText Typo="Typo.h3" GutterBottom="true">Hello, world!</MudText>
-<MudText Class="mb-8">Welcome to your new app, powered by MudBlazor!</MudText>
-<MudAlert Severity="Severity.Normal">You can find documentation and examples on our website here: <MudLink Href="https://mudblazor.com" Typo="Typo.body2" Color="Color.Inherit"><b>www.mudblazor.com</b></MudLink></MudAlert>
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h3" Class="mb-4">Bienvenido a Engrama Template</MudText>
+    <MudText Typo="Typo.body1" Class="mb-4">
+        Esta es una plantilla que sigue la metodología Engrama para aplicaciones Blazor WebAssembly PWA.
+    </MudText>
+    <MudCard Class="glass-card">
+        <MudCardContent>
+            <MudText Typo="Typo.h6">Módulos Disponibles</MudText>
+            <MudText Typo="Typo.body2">
+                Haz clic en "Catálogo de Test Table" en la barra superior para abrir el módulo de ejemplo.
+            </MudText>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>

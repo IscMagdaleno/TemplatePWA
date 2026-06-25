@@ -1,0 +1,41 @@
+@using TemplatePWA.PWA.Shared.Workspace
+@using MudBlazor
+@implements IDisposable
+@inject WorkspaceService WorkspaceService
+
+<MudToolBar Class="bg-gray-100 border-b border-gray-200">
+    <MudSpacer />
+    @foreach (var menuItem in WorkspaceService.CurrentMenuItems)
+    {
+        <MudButton Variant="Variant.Filled" 
+                   Color="@menuItem.Color" 
+                   StartIcon="@menuItem.Icon" 
+                   OnClick="@menuItem.Action" 
+                   Class="mr-2">
+            @menuItem.Text
+        </MudButton>
+    }
+    <MudTooltip Text="Cerrar Pestaña">
+        <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                       Color="Color.Default" 
+                       OnClick="@(() => WorkspaceService.SetCloseCurrentTab(true))" 
+                       Class="ml-2" />
+    </MudTooltip>
+</MudToolBar>
+
+@code {
+    protected override void OnInitialized()
+    {
+        WorkspaceService.MenuChanged += OnMenuChanged;
+    }
+
+    private void OnMenuChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        WorkspaceService.MenuChanged -= OnMenuChanged;
+    }
+}

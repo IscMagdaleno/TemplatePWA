@@ -1,0 +1,29 @@
+@using TemplatePWA.Share.Objects.TestModule
+@using TemplatePWA.PWA.Shared.Workspace
+@using MudBlazor
+@inherits EngramaComponent
+
+<MudTable Items="@Data.LstTestTable" Hover="true" T="Test_Table" Dense="true" Striped="true" RowsPerPage="15">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Test Table Registros</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="filtroTexto" Placeholder="Buscar..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Nombre</MudTh>
+        <MudTh>Email</MudTh>
+        <MudTh>Fecha Registro</MudTh>
+        <MudTh>Acciones</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID">@context.iIdTest_Table</MudTd>
+        <MudTd DataLabel="Nombre">@context.vchName</MudTd>
+        <MudTd DataLabel="Email">@context.vchEmail</MudTd>
+        <MudTd DataLabel="Fecha Registro">@context.dtRegistered.ToString("dd/MM/yyyy")</MudTd>
+        <MudTd DataLabel="Acciones">
+            <MudIconButton Icon="Icons.Material.Filled.Visibility" Color="Color.Info" OnClick="@(() => OnViewRegistro(context))" />
+            <MudIconButton Icon="Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => OnEditRegistro(context))" />
+        </MudTd>
+    </RowTemplate>
+</MudTable>

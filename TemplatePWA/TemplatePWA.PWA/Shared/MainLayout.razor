@@ -1,41 +1,320 @@
-﻿@using TemplatePWA.PWA.Shared.Common
+﻿@using TemplatePWA.PWA.Helpers
+@using TemplatePWA.PWA.Modules.TestModule.Utiles
+@using EngramaCoreStandar.Servicios
+@using EngramaCoreStandar.Mapper
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject WorkspaceService WorkspaceService
+@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
+@inject LoadingState LoadingState
+@inject IHttpService HttpService
+@inject MapperHelper MapperHelper
+@inject IValidaServicioService ValidaServicioService
 
-<MudThemeProvider IsDarkMode="true" />
+<MudThemeProvider Theme="@_customTheme" />
 <MudDialogProvider />
 <MudSnackbarProvider />
 <MudPopoverProvider />
-<div class="bg"></div>
-<div class="bg bg2"></div>
-<div class="bg bg3"></div>
+
+<div class="mesh-bg"></div>
 
 <MudLayout>
-	<MudAppBar Dense="true" Elevation="0" Color="Color.Transparent">
-		<MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
-		<MudSpacer />
-		<MudIconButton Icon="@Icons.Custom.Brands.MudBlazor" Color="Color.Inherit" Link="https://mudblazor.com/" Target="_blank" />
-		<MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" Link="https://github.com/MudBlazor/MudBlazor/" Target="_blank" />
-	</MudAppBar>
-	<MudDrawer @bind-Open="_drawerOpen" Elevation="1">
-		<MudDrawerHeader>
-			<MudText Typo="Typo.h6">TemplatePWA.PWA</MudText>
-		</MudDrawerHeader>
-		<NavMenu />
-	</MudDrawer>
-	<MudMainContent>
-		<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-5 ">
-			<Loading></Loading>
+    <MudAppBar Elevation="0" Fixed="true" Class="modern-appbar" Style="background-color: #A50A3A;">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge">
+            <div class="d-flex align-center justify-space-between">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.LocationCity" Size="Size.Large" Class="mr-3" Style="color: white;" />
+                    <MudText Typo="Typo.h5" Style="font-weight: bold; color: white;">
+                        Engrama Template
+                    </MudText>
+                </div>
 
-			@Body
-		</MudContainer>
-	</MudMainContent>
+                <div class="d-none d-md-flex">
+                    <MudButton Href="/" Color="Color.Inherit" Class="nav-button mx-2" Style="color: white;">
+                        Inicio
+                    </MudButton>
+                    <MudButton OnClick="WorkspaceService.RequestTestTable" Color="Color.Inherit" Class="nav-button mx-2" Style="color: white;">
+                        Catálogo de Test Table
+                    </MudButton>
+                </div>
+
+                <div class="d-md-none">
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" OnClick="@ToggleMobileMenu" Style="color: white;" />
+                </div>
+            </div>
+        </MudContainer>
+    </MudAppBar>
+
+    <MudCollapse Expanded="@_mobileMenuOpen" Class="mobile-menu">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Style="background-color: #A50A3A; padding: 1rem;">
+            <MudStack Spacing="2">
+                <MudButton Href="/" Color="Color.Inherit" FullWidth="true" Style="color: white; justify-content: flex-start;" OnClick="@CloseMobileMenu">
+                    <MudIcon Icon="@Icons.Material.Filled.Home" Class="mr-3" />
+                    Inicio
+                </MudButton>
+                <MudButton OnClick="WorkspaceService.RequestTestTable" Color="Color.Inherit" FullWidth="true" Style="color: white; justify-content: flex-start;">
+                    <MudIcon Icon="@Icons.Material.Filled.TableChart" Class="mr-3" />
+                    Catálogo de Test Table
+                </MudButton>
+            </MudStack>
+        </MudContainer>
+    </MudCollapse>
+
+    <MudMainContent Style="padding-top: 80px; min-height: calc(100vh - 80px); background-color: transparent;">
+        @if (tabsList.Count != 0)
+        {
+            <TemplatePWA.PWA.Shared.Workspace.ToolbarSuperior />
+
+            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" 
+                     Class="glass-effect mx-4 mt-2 mb-4"
+                     Style="border-radius: 16px; overflow: hidden;"
+                     ActivePanelIndex="tabsSelectedIndex" 
+                     ActivePanelIndexChanged="OnTabChanged">
+                @foreach (var tab in tabsList)
+                {
+                    <MudTabPanel ID="@tab.Id">
+                        <ChildContent>
+                            <div class="pa-4">
+                                @tab.Componente
+                            </div>
+                        </ChildContent>
+                        <TabContent>
+                            <MudMenu ActivationEvent="@MouseEvent.RightClick" PositionAtCursor="true" AnchorOrigin="Origin.BottomCenter">
+                                <ActivatorContent>
+                                    <div class="d-flex align-center px-4 py-2" style="cursor: pointer; min-width: 120px;">
+                                        <MudIcon Icon="@tab.Icono" Class="mr-2" Size="Size.Small" />
+                                        <MudText Typo="Typo.body2" Style="white-space: nowrap;">@tab.Text</MudText>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                                       Size="Size.Small" 
+                                                       Class="ml-2 pa-1" 
+                                                       OnClick="@(async () => await CloseCurrentTabAsync(tab.EstadoControl == TipoEstadoControl.Alta || tab.EstadoControl == TipoEstadoControl.Edicion, tab.Id))" />
+                                    </div>
+                                </ActivatorContent>
+                                <ChildContent>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Close" OnClick="@(async () => await CloseCurrentTabAsync(tab.EstadoControl == TipoEstadoControl.Alta || tab.EstadoControl == TipoEstadoControl.Edicion, tab.Id))">Cerrar pestaña</MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.CloseFullscreen" OnClick="CloseOtherTabsAsync">Cerrar las demás</MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.DeleteSweep" OnClick="CloseAllTabsAsync" Disabled="@(tabsList.Count <= 1)">Cerrar todas</MudMenuItem>
+                                </ChildContent>
+                            </MudMenu>
+                        </TabContent>
+                    </MudTabPanel>
+                }
+            </MudTabs>
+        }
+        else
+        {
+            @Body
+        }
+    </MudMainContent>
 </MudLayout>
 
 @code {
-	bool _drawerOpen = true;
+    private bool _mobileMenuOpen = false;
 
-	void DrawerToggle()
-	{
-		_drawerOpen = !_drawerOpen;
-	}
+    private List<WorkspaceTab> tabsList = new List<WorkspaceTab>();
+    private int tabsSelectedIndex = 0;
+
+    protected override void OnInitialized()
+    {
+        WorkspaceService.OnMenuTabSelected += AddTab;
+        WorkspaceService.MenuChanged += () => InvokeAsync(StateHasChanged);
+        WorkspaceService.TabNameChanged += RenameCurrentTab;
+        WorkspaceService.TabStateChanged += SetTabState;
+        WorkspaceService.CloseCurrentTab += async (withWarning) => await CloseCurrentTabAsync(withWarning);
+        
+        WorkspaceService.OnTestTableRequest += AbrirTestTableEnTab;
+    }
+
+    public void Dispose()
+    {
+        WorkspaceService.OnMenuTabSelected -= AddTab;
+        WorkspaceService.OnTestTableRequest -= AbrirTestTableEnTab;
+    }
+
+    private void RenameCurrentTab(string tabName, string iconText)
+    {
+        if (tabsList.Any() && tabsSelectedIndex < tabsList.Count)
+        {
+            tabsList[tabsSelectedIndex].Text = tabName;
+            tabsList[tabsSelectedIndex].Icono = iconText;
+            base.StateHasChanged();
+        }
+    }
+
+    private void SetTabState(TipoEstadoControl tabState)
+    {
+        if (tabsList.Any() && tabsSelectedIndex < tabsList.Count)
+        {
+            tabsList[tabsSelectedIndex].EstadoControl = tabState;
+        }
+    }
+
+    private void OnTabChanged(int index)
+    {
+        if (index >= 0 && index < tabsList.Count)
+        {
+            tabsSelectedIndex = index;
+            var activeTab = tabsList.ElementAtOrDefault(index);
+
+            if (activeTab?.InstanciaComponente != null)
+            {
+                activeTab.InstanciaComponente.TriggerMenuUpdate();
+            }
+            else
+            {
+                WorkspaceService.SetMenuItems(new List<MenuItemModel>());
+            }
+        }
+    }
+
+    private void AddTab(WorkspaceTab tab)
+    {
+        if (tab.Repetir)
+        {
+            tabsList.Add(tab);
+            tabsSelectedIndex = tabsList.Count - 1;
+            base.StateHasChanged();
+            return;
+        }
+
+        var instanciaTab = tabsList
+            .Select((t, index) => new { Tab = t, Index = index })
+            .FirstOrDefault(m => m.Tab.TipoControl == tab.TipoControl);
+
+        if (instanciaTab != null)
+        {
+            tabsSelectedIndex = instanciaTab.Index;
+            OnTabChanged(tabsSelectedIndex);
+        }
+        else
+        {
+            tabsList.Add(tab);
+            tabsSelectedIndex = tabsList.Count - 1;
+        }
+
+        base.StateHasChanged();
+    }
+
+    private async Task CloseCurrentTabAsync(bool withWarning = false, Guid? specificTabId = null)
+    {
+        bool canClose = true;
+        int indexToRemove = tabsSelectedIndex;
+
+        if (specificTabId.HasValue)
+        {
+            indexToRemove = tabsList.FindIndex(t => t.Id == specificTabId.Value);
+            if (indexToRemove < 0) return;
+        }
+
+        if (withWarning)
+        {
+            var parameters = new DialogParameters { { "ContentText", "Tienes cambios sin guardar en esta pestaña. ¿Seguro que deseas cerrarla?" } };
+            canClose = true;
+        }
+
+        if (canClose)
+        {
+            tabsList.RemoveAt(indexToRemove);
+            
+            if (tabsSelectedIndex >= tabsList.Count)
+            {
+                tabsSelectedIndex = Math.Max(0, tabsList.Count - 1);
+            }
+            else if (indexToRemove < tabsSelectedIndex)
+            {
+                tabsSelectedIndex--;
+            }
+            
+            base.StateHasChanged();
+            if (tabsList.Any())
+            {
+                OnTabChanged(tabsSelectedIndex);
+            }
+            else
+            {
+                WorkspaceService.SetMenuItems(new List<MenuItemModel>());
+            }
+        }
+    }
+
+    private async Task CloseOtherTabsAsync()
+    {
+        var activeTab = tabsList[tabsSelectedIndex];
+        tabsList.Clear();
+        tabsList.Add(activeTab);
+        tabsSelectedIndex = 0;
+        StateHasChanged();
+    }
+
+    private async Task CloseAllTabsAsync()
+    {
+        tabsList.Clear();
+        tabsSelectedIndex = 0;
+        WorkspaceService.SetMenuItems(new List<MenuItemModel>());
+        StateHasChanged();
+    }
+
+    private void AbrirTestTableEnTab()
+    {
+        CloseMobileMenu();
+        var type = typeof(TemplatePWA.PWA.Modules.TestModule.Components.GridTestTable);
+        var tab = new WorkspaceTab
+        {
+            Icono = Icons.Material.Filled.TableChart,
+            Text = "Catálogo de Test Table",
+            TipoControl = type,
+            Repetir = false 
+        };
+
+        tab.Componente = builder =>
+        {
+            builder.OpenComponent(0, type);
+            builder.AddAttribute(1, "Data", new MainTest(HttpService, MapperHelper, ValidaServicioService));
+            builder.AddComponentReferenceCapture(2, instance =>
+            {
+                if (instance is EngramaWorkspaceComponent baseComponent)
+                {
+                    tab.InstanciaComponente = baseComponent;
+                    baseComponent.IconoBase = tab.Icono ?? "";
+                    baseComponent.TriggerMenuUpdate();
+                }
+            });
+            builder.CloseComponent();
+        };
+
+        WorkspaceService.AddComponenteTab(tab);
+    }
+
+    private void ToggleMobileMenu()
+    {
+        _mobileMenuOpen = !_mobileMenuOpen;
+    }
+
+    private void CloseMobileMenu()
+    {
+        _mobileMenuOpen = false;
+    }
+
+    private MudTheme _customTheme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#A50A3A",
+            Secondary = "#2b2b2b",
+            AppbarBackground = "#A50A3A",
+            Background = "#F8FAFC",
+            Surface = "#FFFFFF",
+            DrawerBackground = "#FFFFFF",
+            DrawerText = "#1E293B",
+            TextPrimary = "#1E293B",
+            TextSecondary = "#64748B",
+            ActionDefault = "#0f172a",
+            PrimaryContrastText = "#FFFFFF",
+            Success = "#10B981",
+            Warning = "#F59E0B",
+            Error = "#EF4444",
+            Info = "#3B82F6"
+        }
+    };
 }

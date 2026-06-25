@@ -1,16 +1,16 @@
 ﻿@using TemplatePWA.PWA.Modules.TestModule.Components
+@using MudBlazor
 
 @inherits EngramaPage
 @page "/PageTestModule"
 
 <MudCard>
-	<MudCardHeader>
-		<CardHeaderContent>
-			<MudText Typo="Typo.h6">Test Page</MudText>
-		</CardHeaderContent>
-
-	</MudCardHeader>
-	<MudCardContent>
-		<TableTestTable Data="@Data"></TableTestTable>
-	</MudCardContent>
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Test Table Page</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <GridTestTable Data="@Data" />
+    </MudCardContent>
 </MudCard>

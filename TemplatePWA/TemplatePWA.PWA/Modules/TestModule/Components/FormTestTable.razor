@@ -1,0 +1,29 @@
+@using TemplatePWA.PWA.Shared.Workspace
+@using TemplatePWA.Share.Objects.TestModule
+@using MudBlazor
+@inherits EngramaComponent
+
+<MudCard Elevation="3" Class="pa-4 glass-card">
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Nombre" Variant="Variant.Outlined" 
+                              Value="@(Data.RegistroSeleccionado?.vchName)" 
+                              ValueChanged="@((string val) => Data.RegistroSeleccionado.vchName = val)"
+                              ReadOnly="@(EstadoControl == TipoEstadoControl.Lectura)" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Email" Variant="Variant.Outlined" 
+                              Value="@(Data.RegistroSeleccionado?.vchEmail)" 
+                              ValueChanged="@((string val) => Data.RegistroSeleccionado.vchEmail = val)"
+                              ReadOnly="@(EstadoControl == TipoEstadoControl.Lectura)" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudDatePicker Label="Fecha Registro" Variant="Variant.Outlined" 
+                               Date="@(Data.RegistroSeleccionado?.dtRegistered)" 
+                               DateChanged="@((DateTime? val) => Data.RegistroSeleccionado.dtRegistered = val ?? DateTime.Now)"
+                               ReadOnly="@(EstadoControl == TipoEstadoControl.Lectura)" />
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
