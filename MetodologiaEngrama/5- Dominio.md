@@ -2,6 +2,8 @@
 
 La capa de **Dominio** (Domain) en la metodología Engrama es el núcleo donde se implementa la lógica de negocio, complementando la capa de Infraestructura, que se centra exclusivamente en la interacción con la base de datos. Esta capa se encarga de procesar todas las operaciones requeridas por el negocio que no estén implementadas en los procedimientos almacenados, los cuales deben contener la mayoría de las reglas de negocio. La capa de Dominio asegura que las aplicaciones desarrolladas bajo Engrama sean consistentes, modulares y escalables, siguiendo un enfoque basado en **Clean Architecture** adaptado a las necesidades de la metodología.
 
+> **EngramaCoreStandar en Dominio:** `MapperHelper` (DTO ↔ `sp*.Request` / `Result` ↔ entidad Share) e `IResponseHelper` (`Validacion` → `Response<T>`). También se usan extensiones (`IsNull()`, `False()`, etc.). Catálogo: [0- EngramaCoreStandar.md](0-%20EngramaCoreStandar.md) §§ 4–5 y 9.
+
 ## Estructura de la Capa de Dominio
 
 La capa de Dominio se organiza en tres carpetas principales, con la flexibilidad de agregar más según las necesidades del sistema:
@@ -29,7 +31,7 @@ Cada clase en la carpeta `Core` debe configurarse siguiendo las directrices de E
    - Permite invocar los métodos que consultan la base de datos desde la capa de Infraestructura.
 
 2. **MapperHelper**:  
-   - Una herramienta proporcionada por el paquete `EngramaCoreStandard`, basada en un mapeador como AutoMapper, que facilita la conversión entre modelos (por ejemplo, de `DtoModel` a `Request`).
+   - Una herramienta proporcionada por el paquete `EngramaCoreStandar`, basada en un mapeador como AutoMapper, que facilita la conversión entre modelos (por ejemplo, de `DtoModel` a `Request`).
 
 3. **IResponseHelper**:  
    - Una interfaz que ayuda a validar y estandarizar las respuestas de la capa de Infraestructura, devolviendo un objeto `Response<T>` que homogeneiza las respuestas.
@@ -182,13 +184,73 @@ public async Task<Response<TestTable>> SaveTestTable(DtoSaveTestTable DtoModel)
 5. **Respuesta Estandarizada**:  
    - Siempre devolver un objeto `Response<T>`, con `IsSuccess` y `Message` actualizados según el resultado de la operación.
 
+## Ejemplo: SP con lista (DataType / TVP)
+
+Cuando el DTO trae una colección que debe llegar a SQL como Table-Valued Parameter:
+
+1. **No** uses `mapperHelper.Get` del DTO completo si Share `DT*` y Infrastructure `DT*` son tipos distintos (AutoMapper falla en `Parameters`).
+2. Construye `sp*.Request` con escalares + **asigna explícitamente** la lista TVP mapeada a `Infrastructure.Entity.DT*`.
+3. El repositorio debe usar `GetWithListAsync` / `GetAllWithListAsync`.
+
+```csharp
+public async Task<Response<IEnumerable<Test_Table>>> GetTestTableDataType(DtoGetTestTableDataType postModel)
+{
+    // Do NOT mapperHelper.Get the full DTO: Share.DT* ≠ Infrastructure.DT* → AutoMapper fails on Parameters.
+    var model = new spGetTestTableDataType.Request
+    {
+        iIdTest_Table = postModel.iIdTest_Table,
+        vchName = postModel.vchName,
+        vchEmail = postModel.vchEmail,
+        dtRegistered = postModel.dtRegistered,
+        Parameters = (postModel.Parameters ?? Enumerable.Empty<Share.DtoModels.TestModule.DTParameterType>())
+            .Select(p => new Infrastructure.Entity.DTParameterType
+            {
+                iParameter = p.iParameter,
+                vchParameter = p.vchParameter,
+                dtParameter = p.dtParameter,
+                mParametr = p.mParametr,
+                smParameter = p.smParameter,
+                bParameter = p.bParameter
+            })
+            .ToList()
+    };
+
+    var result = await testRepository.spGetTestTableDataType(model);
+    return responseHelper.Validacion<spGetTestTableDataType.Result, Test_Table>(result);
+}
+```
+
+Referencias: `BaseDatos/ScritpCompleto.sql` (`DTParameterType`, `spGetTestTableDataType`), docs `1-`, `2-` y `4-`.
+
+## EngramaCoreStandar en Dominio
+
+| Pieza | API del paquete | Uso típico |
+|-------|-----------------|------------|
+| `MapperHelper` | `Get<TIn,TOut>`, `GetEnumerable`, `Map` | DTO → `sp*.Request`; `Result` → Object Share |
+| `IResponseHelper` | `Validacion<TResult,TOut>(…)`, `ValidacionSinMapper` | Lista o fila `DbResult` → `Response<T>` |
+| `Response<T>` | `IsSuccess`, `Message`, `Data`, `BadResult` | Contrato hacia Controllers |
+| Extensiones | `IsNull()`, `False()`, `IsEmpty()`, … | Guards idiomáticos Engrama |
+
+```csharp
+using EngramaCoreStandar.Extensions;
+
+if (postModel.IsNull().False())
+{
+    // postModel no es null
+}
+
+return responseHelper.Validacion<spSaveTest_Table.Result, Test_Table>(result);
+return responseHelper.Validacion<spGetTestTable.Result, Test_Table>(resultList);
+```
+
+`MapperHelper` y `IResponseHelper` se registran con `AddEngramaDependenciesAPI()`. Detalle: [0- EngramaCoreStandar.md](0-%20EngramaCoreStandar.md) §§ 4–5 y 9.
 
 ## Recomendaciones
-- **Modularidad**: Mantenga las clases en `Core` enfocadas en un solo módulo para facilitar el mantenimiento.  
-- **Lógica de Negocio**: Limite la lógica en la capa de Dominio a operaciones que no puedan implementarse en los procedimientos almacenados, respetando la directriz de Engrama de priorizar la base de datos para reglas de negocio.  
-- **Validaciones**: Considere agregar validaciones adicionales en los métodos (por ejemplo, verificar que el `DtoModel` no sea nulo antes del mapeo).  
-- **Pruebas**: Implemente pruebas unitarias para los métodos de la capa de Dominio, asegurando que las respuestas sean correctas en diferentes escenarios.  
+- **Modularidad**: Mantenga las clases en `Core` enfocadas en un solo módulo para facilitar el mantenimiento.
+- **Lógica de Negocio**: Limite la lógica en la capa de Dominio a operaciones que no puedan implementarse en los procedimientos almacenados, respetando la directriz de Engrama de priorizar la base de datos para reglas de negocio.
+- **Validaciones**: Considere agregar validaciones adicionales en los métodos (por ejemplo, verificar que el `DtoModel` no sea nulo antes del mapeo).
+- **Pruebas**: Implemente pruebas unitarias para los métodos de la capa de Dominio, asegurando que las respuestas sean correctas en diferentes escenarios.
 - **Documentación**: Agregue comentarios XML a todos los métodos para mejorar la mantenibilidad y la comprensión del código.
 
 ## Conclusión
-La capa de Dominio en la metodología Engrama es el componente clave para implementar la lógica de negocio, integrando las consultas a la base de datos (a través de la capa de Infraestructura) con las necesidades del cliente. La estructura modular en carpetas (`Core`, `Interfaces`, `Servicios`), la inyección de dependencias (`ITestRepository`, `MapperHelper`, `IResponseHelper`) y el uso del objeto `Response<T>` garantizan homogeneidad, escalabilidad y facilidad de mantenimiento. Los métodos estandarizados, alineados con los procedimientos almacenados, aseguran una integración fluida y un desarrollo eficiente de aplicaciones robustas.
+La capa de Dominio en la metodología Engrama es el componente clave para implementar la lógica de negocio, integrando las consultas a la base de datos (a través de la capa de Infraestructura) con las necesidades del cliente. La estructura modular en carpetas (`Core`, `Interfaces`, `Servicios`), la inyección de dependencias (`ITestRepository`, `MapperHelper`, `IResponseHelper` de **EngramaCoreStandar**) y el uso del objeto `Response<T>` garantizan homogeneidad, escalabilidad y facilidad de mantenimiento.

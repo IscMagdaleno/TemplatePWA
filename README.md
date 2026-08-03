@@ -59,10 +59,25 @@ TemplatePWA/
 
 | Component | Purpose |
 |-----------|---------|
-| `WorkspaceService` | Manages open tabs and menu registration |
-| `DynamicComponent` | Renders active tab without module-specific code |
-| `ToolbarSuperior` | Dynamic toolbar showing registered modules |
-| `MainLayout` | Generic layout with tab header and drawer |
+| `WorkspaceService` | Event hub: open tab, toolbar menu, rename, close |
+| `DynamicComponent` | Renders each open tab without module-specific layout code |
+| `ToolbarSuperior` | Dynamic toolbar showing the active module actions |
+| `MainLayout` | Owns `tabsList`; hosts MudTabs + DynamicComponent |
+
+### Sending lists to SQL (DataType / TVP)
+
+See **[MetodologiaEngrama/8- Guia Consultas SP.md](MetodologiaEngrama/8-%20Guia%20Consultas%20SP.md)** for Get / GetAll / GetWithList / Save.
+
+Quick path:
+
+1. SQL: `CREATE TYPE dbo.DT…` + SP parameter `@List DT… READONLY`
+2. API: class `DT…` + `Request` property `IEnumerable<DT…> List`
+3. Repository: `GetWithListAsync` / `GetAllWithListAsync`
+4. Share DTO + Domain map the list before calling the repository
+
+Reference module: TestModule — **Agregar** (Save), grid load (GetAll), **Filtrar por TVP** (GetAllWithList).
+
+Local EngramaCore: [`EngramaCoreStandar/`](EngramaCoreStandar/) (v1.1.2 via project reference).
 
 ## Adding a New Module
 
@@ -166,14 +181,18 @@ Add to `Modules/ProductModule/Components/FormProduct.razor`:
 In your main component's `OnInitializedAsync`:
 
 ```csharp
-protected override void OnInitializedAsync()
+protected override void OnInitialized()
 {
-    WorkspaceService.AgregarComponenteTab(new WorkspaceTab
+    WorkspaceService.AddComponenteTab(new WorkspaceTab
     {
-        Titulo = "Products",
+        Text = "Products",
         Icono = Icons.Material.Filled.Inventory,
-        ComponentType = typeof(ProductModule),
-        Parameters = new Dictionary<string, object> { { "Data", Data } }
+        TipoControl = typeof(GridProduct),
+        Parameters = new Dictionary<string, object>
+        {
+            ["Data"] = Data
+            // Optional on WorkspaceTab: EntityId, ForceNewTab (not inside Parameters)
+        }
     });
 }
 ```
@@ -182,15 +201,15 @@ protected override void OnInitializedAsync()
 
 The template uses a tab-based interface similar to an IDE:
 
-- **CRUD Modules** → Open as tabs (multiple instances allowed)
-- **Static Pages** → Use regular routing (`@page "/path"`)
+- **CRUD Modules** → Open as tabs (multiple modules stay open; forms use tab `EntityId` + mode, or `ForceNewTab`)
+- **Static Pages** → Use regular routing (`@page "/path"`); `@Body` is hidden while any tab is open
 
 ### Tab Lifecycle
 
-1. User clicks menu item → `ToolbarSuperior`
-2. `WorkspaceService.AgregarComponenteTab()` creates/activates tab
-3. `MainLayout` renders active tab via `DynamicComponent`
-4. User can close tabs or switch between them
+1. Caller builds a `WorkspaceTab` and calls `WorkspaceService.AddComponenteTab()`
+2. `MainLayout` dedupes by identity (`TipoControl` | `EntityId` | mode, unless `ForceNewTab`)
+3. `MudTabs` + `DynamicComponent` keep open tabs available; the X closes **that** tab by `Id`
+4. User can close current / others / all from the tab context menu
 
 ## Configuration
 

@@ -1,16 +1,10 @@
 {
-  "name": "TemplatePWA.PWA",
-  "short_name": "TemplatePWA.PWA",
+  "name": "Engrama Template",
+  "short_name": "Engrama",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#03173d",
+  "background_color": "#F8FAFC",
+  "theme_color": "#A50A3A",
   "prefer_related_applications": false,
-  "icons": [
-    {
-      "src": "icon-512.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    }
-  ]
+  "icons": []
 }

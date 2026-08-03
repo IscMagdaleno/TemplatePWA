@@ -1,11 +1,14 @@
-﻿@using TemplatePWA.PWA.Helpers
-@using TemplatePWA.PWA.Shared.Workspace
-@using TemplatePWA.PWA.Shared.Common
-@inherits LayoutComponentBase
-@implements IDisposable
-@inject WorkspaceService WorkspaceService
+﻿@inject WorkspaceService WorkspaceService
 @inject IJSRuntime JSRuntime
 @inject IDialogService DialogService
+@inject NavigationManager Navigation
+@implements IDisposable
+@inherits LayoutComponentBase
+@using TemplatePWA.PWA.Helpers
+@using TemplatePWA.PWA.Shared.Workspace
+@using TemplatePWA.PWA.Shared.Common
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Routing
 
 <MudThemeProvider Theme="@_customTheme" />
 <MudDialogProvider />
@@ -29,6 +32,9 @@
                     <MudButton Href="/" Color="Color.Inherit" Class="nav-button mx-2" Style="color: white;">
                         Inicio
                     </MudButton>
+                    <MudButton Href="/guia-engrama-core" Color="Color.Inherit" Class="nav-button mx-2" Style="color: white;">
+                        Guía EngramaCore
+                    </MudButton>
                 </div>
 
                 <div class="d-md-none">
@@ -45,12 +51,16 @@
                     <MudIcon Icon="@Icons.Material.Filled.Home" Class="mr-3" />
                     Inicio
                 </MudButton>
+                <MudButton Href="/guia-engrama-core" Color="Color.Inherit" FullWidth="true" Style="color: white; justify-content: flex-start;" OnClick="@CloseMobileMenu">
+                    <MudIcon Icon="@Icons.Material.Filled.MenuBook" Class="mr-3" />
+                    Guía EngramaCore
+                </MudButton>
             </MudStack>
         </MudContainer>
     </MudCollapse>
 
     <MudMainContent Style="padding-top: 80px; min-height: calc(100vh - 80px); background-color: transparent;">
-        @if (tabsList.Count != 0)
+        @if (ShowWorkspaceTabs)
         {
             <ToolbarSuperior OnCloseTab="CloseCurrentTabAsync" />
 
@@ -61,7 +71,7 @@
                      ActivePanelIndexChanged="OnTabChanged">
                 @foreach (var tab in tabsList)
                 {
-                    <MudTabPanel ID="@tab.Id">
+                    <MudTabPanel ID="@tab.Id.ToString()">
                         <ChildContent>
                             <div class="pa-4">
                                 <DynamicComponent Type="tab.TipoControl" Parameters="tab.Parameters" />
@@ -73,15 +83,17 @@
                                     <div class="d-flex align-center px-4 py-2" style="cursor: pointer; min-width: 120px;">
                                         <MudIcon Icon="@tab.Icono" Class="mr-2" Size="Size.Small" />
                                         <MudText Typo="Typo.body2" Style="white-space: nowrap;">@tab.Text</MudText>
-                                        <MudIconButton Icon="@Icons.Material.Filled.Close" 
-                                                       Size="Size.Small" 
-                                                       Class="ml-2 pa-1" 
-                                                       OnClick="@(async () => await CloseCurrentTabAsync())" />
+                                        <span @onclick:stopPropagation="true">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                                           Size="Size.Small" 
+                                                           Class="ml-2 pa-1" 
+                                                           OnClick="@(() => CloseTabAsync(tab))" />
+                                        </span>
                                     </div>
                                 </ActivatorContent>
                                 <ChildContent>
-                                    <MudMenuItem Icon="@Icons.Material.Filled.Close" OnClick="@(async () => await CloseCurrentTabAsync())">Cerrar pestaña</MudMenuItem>
-                                    <MudMenuItem Icon="@Icons.Material.Filled.CloseFullscreen" OnClick="CloseOtherTabsAsync">Cerrar las demás</MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Close" OnClick="@(() => CloseTabAsync(tab))">Cerrar pestaña</MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.CloseFullscreen" OnClick="@(() => CloseOtherTabsAsync(tab))">Cerrar las demás</MudMenuItem>
                                     <MudMenuItem Icon="@Icons.Material.Filled.DeleteSweep" OnClick="CloseAllTabsAsync" Disabled="@(tabsList.Count <= 1)">Cerrar todas</MudMenuItem>
                                 </ChildContent>
                             </MudMenu>
@@ -102,19 +114,42 @@
     private List<WorkspaceTab> tabsList = new List<WorkspaceTab>();
     private int tabsSelectedIndex = 0;
 
+    /// <summary>
+    /// Doc/static routes always use @Body so the EngramaCore guide is reachable even if tabs are open.
+    /// </summary>
+    private bool IsDocsRoute =>
+        Navigation.ToBaseRelativePath(Navigation.Uri)
+            .StartsWith("guia-engrama-core", StringComparison.OrdinalIgnoreCase);
+
+    private bool ShowWorkspaceTabs => tabsList.Count != 0 && !IsDocsRoute;
+
     protected override void OnInitialized()
     {
+        Navigation.LocationChanged += OnLocationChanged;
         WorkspaceService.OnMenuTabSelected += AddTab;
-        WorkspaceService.MenuChanged += () => InvokeAsync(StateHasChanged);
+        WorkspaceService.MenuChanged += OnMenuChanged;
         WorkspaceService.TabNameChanged += RenameCurrentTab;
         WorkspaceService.TabStateChanged += SetTabState;
-        WorkspaceService.CloseCurrentTab += async (withWarning) => await CloseCurrentTabAsync();
+        WorkspaceService.CloseCurrentTab += OnCloseCurrentTabRequested;
     }
 
     public void Dispose()
     {
+        Navigation.LocationChanged -= OnLocationChanged;
         WorkspaceService.OnMenuTabSelected -= AddTab;
+        WorkspaceService.MenuChanged -= OnMenuChanged;
+        WorkspaceService.TabNameChanged -= RenameCurrentTab;
+        WorkspaceService.TabStateChanged -= SetTabState;
+        WorkspaceService.CloseCurrentTab -= OnCloseCurrentTabRequested;
     }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        InvokeAsync(StateHasChanged);
+
+    private void OnMenuChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnCloseCurrentTabRequested(bool withWarning) =>
+        InvokeAsync(CloseCurrentTabAsync);
 
     private void RenameCurrentTab(string tabName, string iconText)
     {
@@ -144,7 +179,15 @@
 
     private void AddTab(WorkspaceTab tab)
     {
-        var existing = tabsList.FirstOrDefault(t => t.TipoControl == tab.TipoControl && tab.Parameters.ContainsKey("IsNewTab") == false);
+        if (tab.Parameters != null
+            && tab.Parameters.TryGetValue("EstadoControl", out var estadoParam)
+            && estadoParam is TipoEstadoControl estado)
+        {
+            tab.EstadoControl = estado;
+        }
+
+        var identity = tab.GetIdentityKey();
+        var existing = tabsList.FirstOrDefault(t => t.GetIdentityKey() == identity);
         if (existing != null)
         {
             tabsSelectedIndex = tabsList.IndexOf(existing);
@@ -157,26 +200,48 @@
         base.StateHasChanged();
     }
 
-    private async Task CloseCurrentTabAsync()
+    private Task CloseCurrentTabAsync()
     {
-        if (!tabsList.Any()) return;
-
-        tabsList.RemoveAt(tabsSelectedIndex);
-        tabsSelectedIndex = Math.Max(0, tabsList.Count - 1);
-        
-        base.StateHasChanged();
-        
-        if (!tabsList.Any())
+        if (!tabsList.Any() || tabsSelectedIndex < 0 || tabsSelectedIndex >= tabsList.Count)
         {
-            WorkspaceService.SetMenuItems(new List<MenuItemModel>());
+            return Task.CompletedTask;
         }
+
+        return CloseTabAsync(tabsList[tabsSelectedIndex]);
     }
 
-    private void CloseOtherTabsAsync()
+    private Task CloseTabAsync(WorkspaceTab tab)
     {
-        var activeTab = tabsList[tabsSelectedIndex];
+        var index = tabsList.IndexOf(tab);
+        if (index < 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        tabsList.RemoveAt(index);
+
+        if (tabsList.Count == 0)
+        {
+            tabsSelectedIndex = 0;
+            WorkspaceService.SetMenuItems(new List<MenuItemModel>());
+        }
+        else if (index < tabsSelectedIndex)
+        {
+            tabsSelectedIndex--;
+        }
+        else if (tabsSelectedIndex >= tabsList.Count)
+        {
+            tabsSelectedIndex = tabsList.Count - 1;
+        }
+
+        base.StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void CloseOtherTabsAsync(WorkspaceTab keepTab)
+    {
         tabsList.Clear();
-        tabsList.Add(activeTab);
+        tabsList.Add(keepTab);
         tabsSelectedIndex = 0;
         StateHasChanged();
     }

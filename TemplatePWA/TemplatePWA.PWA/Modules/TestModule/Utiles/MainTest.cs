@@ -48,6 +48,7 @@ namespace TemplatePWA.PWA.Modules.TestModule.Utiles
             var validacion = validaServicioService.ValidadionServicio(response,
                 onSuccess: data => 
                 {
+                    RegistroSeleccionado = data;
                     if (model.iIdTest_Table == 0)
                     {
                         LstTestTable.Add(data);
@@ -61,8 +62,42 @@ namespace TemplatePWA.PWA.Modules.TestModule.Utiles
                             existing.vchEmail = data.vchEmail;
                             existing.dtRegistered = data.dtRegistered;
                         }
+                        else
+                        {
+                            LstTestTable.Add(data);
+                        }
                     }
                 });
+
+            return validacion;
+        }
+
+        /// <summary>
+        /// Calls PostGetTestTableDataType — sends a list of IDs as TVP (DTParameterType).
+        /// Pass selectedIds to filter; empty list returns all rows (SP demo behavior).
+        /// </summary>
+        public async Task<SeverityMessage> PostGetByDataType(IEnumerable<int> selectedIds)
+        {
+            var APIUrl = url + "/PostGetTestTableDataType";
+
+            var model = new DtoGetTestTableDataType
+            {
+                // SQL @dtRegistered is DATETIME — never send DateTime default (0001-01-01)
+                dtRegistered = DateTime.Parse("1900-01-01"),
+                Parameters = (selectedIds ?? Enumerable.Empty<int>())
+                    .Where(id => id > 0)
+                    .Select(id => new DTParameterType
+                    {
+                        iParameter = id,
+                        vchParameter = string.Empty,
+                        dtParameter = DateTime.Parse("1900-01-01")
+                    })
+                    .ToList()
+            };
+
+            var response = await _httpService.Post<DtoGetTestTableDataType, Response<List<Test_Table>>>(APIUrl, model);
+            var validacion = validaServicioService.ValidadionServicio(response,
+                onSuccess: data => LstTestTable = data.ToList());
 
             return validacion;
         }

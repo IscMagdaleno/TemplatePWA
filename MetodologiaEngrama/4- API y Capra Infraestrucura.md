@@ -2,6 +2,8 @@
 
 La metodología Engrama define una arquitectura clara y estandarizada para el desarrollo de APIs, basada en los principios de **Clean Architecture**, pero adaptada para garantizar un proceso homogéneo y consistente en todas las aplicaciones desarrolladas bajo este enfoque. Este documento describe la estructura de la API, enfocándose exclusivamente en la capa de **Infraestructura** (`Infrastructure`), que es responsable de la interacción con la base de datos.
 
+> **EngramaCoreStandar:** Infrastructure consume `IDapperManagerHelper`, contratos `SpRequest`/`DbResult` y `DataResult<T>`. Referencia del paquete: [0- EngramaCoreStandar.md](0-%20EngramaCoreStandar.md).
+
 ## Estructura General de la API
 
 La API se organiza en dos capas principales de código base, denominadas **EngramaLevels**, y una capa de servicios que contiene los controladores con los endpoints. Estas capas, ordenadas desde la base de datos hasta el cliente, son:
@@ -14,7 +16,7 @@ Este documento se centra únicamente en la capa de **Infraestructura**, detallan
 
 ## Capa de Infraestructura
 
-La capa de **Infraestructura** es responsable de todas las operaciones relacionadas con la base de datos, utilizando **procedimientos almacenados** y el micro ORM **Dapper** para consultas eficientes. La metodología Engrama estandariza este proceso mediante el uso del paquete NuGet **EngramaCoreStandard**, que proporciona una estructura simplificada para invocar procedimientos almacenados.
+La capa de **Infraestructura** es responsable de todas las operaciones relacionadas con la base de datos, utilizando **procedimientos almacenados** y el micro ORM **Dapper** para consultas eficientes. La metodología Engrama estandariza este proceso mediante **EngramaCoreStandar** (`IDapperManagerHelper` / `DapperMangerHelper`), que convierte `Request : SpRequest` en parámetros SQL (o TVP) y envuelve el resultado en `DataResult<T>`.
 
 ### Estructura de Carpetas
 La capa de Infraestructura se organiza en tres carpetas principales:
@@ -33,9 +35,9 @@ La capa de Infraestructura se organiza en tres carpetas principales:
 
 ### Convenciones para la Capa de Infraestructura
 
-1. **Uso de Dapper y EngramaCoreStandard**:  
+1. **Uso de Dapper y EngramaCoreStandar**:  
    - Todas las consultas a la base de datos se realizan mediante procedimientos almacenados, invocados a través de **Dapper**.  
-   - El paquete **EngramaCoreStandard** proporciona métodos simplificados para interactuar con los procedimientos almacenados, como `GetAsync`, `GetAllAsync`, `GetWithListAsync` y `GetAllWithListAsync`.
+   - El paquete **EngramaCoreStandar** proporciona métodos simplificados para interactuar con los procedimientos almacenados, como `GetAsync`, `GetAllAsync`, `GetWithListAsync` y `GetAllWithListAsync`.
 
 2. **Repositorios**:  
    - Cada módulo tiene una clase de repositorio en la carpeta `Repository`, que implementa una interfaz correspondiente en la carpeta `Interfaces`.  
@@ -58,7 +60,7 @@ La capa de Infraestructura se organiza en tres carpetas principales:
 3. **Entidades (Entities)**:  
    - Cada procedimiento almacenado tiene una clase en la carpeta `Entities` con el mismo nombre que el procedimiento, por ejemplo, `spGetTestTable.cs`.  
    - Esta clase contiene dos subclases:  
-     - **Request**: Representa los parámetros de entrada del procedimiento almacenado. Implementa la interfaz `SpRequest` de `EngramaCoreStandard`, que requiere un atributo `StoredProcedure` con el nombre exacto del procedimiento.  
+     - **Request**: Representa los parámetros de entrada del procedimiento almacenado. Implementa la interfaz `SpRequest` de `EngramaCoreStandar`, que requiere un atributo `StoredProcedure` con el nombre exacto del procedimiento.  
      - **Result**: Representa los datos devueltos por el procedimiento almacenado. Implementa la interfaz `DbResult`, que incluye los campos obligatorios `bResult` (indica si la consulta fue exitosa) y `vchMessage` (mensaje de error o nota para el cliente).  
    - Los atributos de `Request` y `Result` deben coincidir exactamente con los parámetros de entrada y salida del procedimiento almacenado.
 
@@ -85,51 +87,146 @@ La capa de Infraestructura se organiza en tres carpetas principales:
      }
      ```
 
-4. **Manejo de Listas como Parámetros**:  
-   - En casos donde el procedimiento almacenado requiere una lista de datos como parámetro (por ejemplo, un `DataTable`), se define un modelo en una carpeta separada con el prefijo `DT` seguido del nombre del tipo de datos, por ejemplo, `DTParameterType.cs`.  
-   - Ejemplo de modelo para un `DataTable`:
+4. **Manejo de Listas como Parámetros (DataType / TVP)**:  
 
-     ```csharp
-     public class DTParameterType
-     {
-         public int iParameter { get; set; }
-         public string vchParameter { get; set; }
-         public DateTime dtParameter { get; set; }
-         public decimal mParameter { get; set; }
-         public short smParameter { get; set; }
-         public bool bParameter { get; set; }
-     }
-     ```
+   Cuando el SP declara un parámetro `@NombreLista DTTipo READONLY`, la API debe:
 
-   - Ejemplo de una entidad que utiliza un `DataTable`:
+   1. Tener una clase `DT*` en `Infrastructure/Entity` con **las mismas columnas** que el tipo SQL.
+   2. Exponer en el `Request` una propiedad `IEnumerable<DT*>` cuyo **nombre coincida** con el parámetro SQL (sin `@`). Ejemplo: `@Parameters` → `Parameters`.
+   3. Invocar el repositorio con `GetWithListAsync` (un `Result`) o `GetAllWithListAsync` (varios `Result`).
 
-     ```csharp
-     public class spGetTestTableDataType
-     {
-         public class Request : SpRequest
-         {
-             public string StoredProcedure => "spGetTestTableDataType";
-             public int iIdTestTable { get; set; }
-             public string vchName { get; set; }
-             public string vchEmail { get; set; }
-             public DateTime? dtRegistered { get; set; }
-             public IEnumerable<DTParameterType> Parameters { get; set; }
-         }
+   **Clase DT (Infrastructure)** — espejo de `dbo.DTParameterType`:
 
-         public class Result : DbResult
-         {
-             public bool bResult { get; set; }
-             public string vchMessage { get; set; }
-             public int iIdTestTable { get; set; }
-             public string vchName { get; set; }
-             public string vchEmail { get; set; }
-             public DateTime? dtRegistered { get; set; }
-         }
-     }
-     ```
+   ```csharp
+   public class DTParameterType
+   {
+       public int iParameter { get; set; }
+       public string vchParameter { get; set; }
+       public DateTime dtParameter { get; set; }
+       public decimal mParametr { get; set; }   // mismo nombre/typo que en SQL
+       public int smParameter { get; set; }
+       public int bParameter { get; set; }
+   }
+   ```
+
+   **Entidad del SP** — `spGetTestTableDataType.cs` (plantilla):
+
+   ```csharp
+   public class spGetTestTableDataType
+   {
+       public class Request : SpRequest
+       {
+           public string StoredProcedure { get => "spGetTestTableDataType"; }
+           public int iIdTest_Table { get; set; }
+           public string vchName { get; set; }
+           public string vchEmail { get; set; }
+           public DateTime? dtRegistered { get; set; }
+           // Nombre = parámetro SQL @Parameters; EngramaCore lo envía como TVP
+           public IEnumerable<DTParameterType> Parameters { get; set; }
+       }
+
+       public class Result : DbResult
+       {
+           public bool bResult { get; set; }
+           public string vchMessage { get; set; }
+           public int iIdTest_Table { get; set; }
+           public string vchName { get; set; }
+           public string vchEmail { get; set; }
+           public DateTime? dtRegistered { get; set; }
+       }
+   }
+   ```
+
+   **Repositorio**:
+
+   ```csharp
+   // Un solo registro de resultado
+   public async Task<spGetTestTableDataType.Result> spGetTestTableDataType(
+       spGetTestTableDataType.Request postModel)
+   {
+       var result = await _managerHelper
+           .GetWithListAsync<spGetTestTableDataType.Result, spGetTestTableDataType.Request>(postModel);
+       if (result.Ok) return result.Data;
+       return new() { bResult = false, vchMessage = result.Msg };
+   }
+
+   // Varios registros de resultado (misma idea, otro helper)
+   public async Task<IEnumerable<spGetTestTableDataType.Result>> spGetTestTableDataTypeList(
+       spGetTestTableDataType.Request postModel)
+   {
+       var result = await _managerHelper
+           .GetAllWithListAsync<spGetTestTableDataType.Result, spGetTestTableDataType.Request>(postModel);
+       if (result.Ok) return result.Data;
+       return new List<spGetTestTableDataType.Result>
+       {
+           new() { bResult = false, vchMessage = result.Msg }
+       };
+   }
+   ```
+
+   **Share DTO** — la lista viaja al cliente/API en el body:
+
+   ```csharp
+   public class DtoGetTestTableDataType
+   {
+       public int iIdTest_Table { get; set; }
+       public string vchName { get; set; }
+       public string vchEmail { get; set; }
+       public DateTime dtRegistered { get; set; }
+       public IEnumerable<DTParameterType> Parameters { get; set; }
+   }
+   ```
+
+   **Dominio** — construir el `Request` a mano cuando hay TVP (Share `DT*` ≠ Infrastructure `DT*`; `mapperHelper.Get` del DTO completo falla en `Parameters`):
+
+   ```csharp
+   public async Task<Response<IEnumerable<Test_Table>>> GetTestTableDataType(DtoGetTestTableDataType postModel)
+   {
+       var model = new spGetTestTableDataType.Request
+       {
+           iIdTest_Table = postModel.iIdTest_Table,
+           vchName = postModel.vchName,
+           vchEmail = postModel.vchEmail,
+           dtRegistered = postModel.dtRegistered,
+           Parameters = (postModel.Parameters ?? Enumerable.Empty<Share.DtoModels.TestModule.DTParameterType>())
+               .Select(p => new Infrastructure.Entity.DTParameterType
+               {
+                   iParameter = p.iParameter,
+                   vchParameter = p.vchParameter,
+                   dtParameter = p.dtParameter,
+                   mParametr = p.mParametr,
+                   smParameter = p.smParameter,
+                   bParameter = p.bParameter
+               })
+               .ToList()
+       };
+
+       var result = await testRepository.spGetTestTableDataType(model);
+       return responseHelper.Validacion<spGetTestTableDataType.Result, Test_Table>(result);
+   }
+   ```
+
+   **Cuándo usar cada helper**
+
+   | Helper | SP recibe lista | SP retorna |
+   |--------|-----------------|------------|
+   | `GetAsync` | No | 1 fila |
+   | `GetAllAsync` | No | N filas |
+   | `GetWithListAsync` | Sí (`DT*`) | 1 fila |
+   | `GetAllWithListAsync` | Sí (`DT*`) | N filas |
+
+   **Checklist Engrama para SPs con lista**
+
+   - [ ] Existe `CREATE TYPE dbo.DT…` en SQL
+   - [ ] SP declara `@Nombre DT… READONLY` y **usa** la tabla en el SQL
+   - [ ] Clase C# `DT…` alineada columna a columna
+   - [ ] `Request` tiene `IEnumerable<DT…> Nombre` = nombre del parámetro
+   - [ ] Repositorio usa `GetWithListAsync` o `GetAllWithListAsync`
+   - [ ] DTO Share incluye la misma colección para el endpoint
+   - [ ] Dominio construye `Request` a mano (o mapea solo escalares) y asigna `Parameters` desde Share `DT*` → Infrastructure `DT*` — **no** `mapperHelper.Get` del DTO completo
 
 5. **Métodos de Consulta**:  
-   - Los métodos en las clases de repositorio invocan los procedimientos almacenados utilizando los métodos de `DapperManagerHelper`.  
+   - Los métodos en las clases de repositorio invocan los procedimientos almacenados utilizando los métodos de `DapperMangerHelper` (`IDapperManagerHelper`).  
    - Tipos de métodos disponibles según el tipo de consulta:  
      - `GetAsync`: Para procedimientos que retornan un solo registro.  
      - `GetAllAsync`: Para procedimientos que retornan una lista de registros (almacenada en un `IEnumerable`).  
@@ -150,15 +247,29 @@ La capa de Infraestructura se organiza en tres carpetas principales:
      ```
 
 ### Beneficios de la Capa de Infraestructura
-1. **Estandarización**: El uso de `EngramaCoreStandard` y las convenciones de nomenclatura garantizan consistencia en todas las aplicaciones.  
+1. **Estandarización**: El uso de `EngramaCoreStandar` y las convenciones de nomenclatura garantizan consistencia en todas las aplicaciones.  
 2. **Simplicidad**: La estructura de `Request` y `Result` simplifica la interacción con procedimientos almacenados.  
 3. **Mantenibilidad**: La separación en interfaces, repositorios y entidades facilita la actualización y el mantenimiento del código.  
-4. **Flexibilidad**: Los métodos de `DapperManagerHelper` cubren diferentes casos de uso, desde consultas simples hasta aquellas que manejan listas complejas.
+4. **Flexibilidad**: Los métodos de `DapperMangerHelper` (`IDapperManagerHelper`) cubren diferentes casos de uso, desde consultas simples hasta aquellas que manejan listas complejas.
+
+### EngramaCoreStandar en Infrastructure — resumen operativo
+
+| Pieza | Origen en el paquete | Uso en esta capa |
+|-------|----------------------|------------------|
+| `IDapperManagerHelper` | `Dapper/` | Único punto de entrada a SPs desde repositorios |
+| `SpRequest` / `DbResult` | `Dapper/Interfaces` | Contratos de `Request` / `Result` |
+| `DataResult<T>` | `Dapper/Results` | `Ok`, `Msg`, `Data` tras cada helper |
+| Connection string | `EngramaCloudConnection` | Leída por el helper (API `appsettings`) |
+| DI | `AddEngramaDependenciesAPI()` | Registra helper + Dapper + logger |
+
+No inyectar `IDapperManager` en repositorios Engrama; es capa interna del paquete.
+
+Ver catálogo: [0- EngramaCoreStandar.md](0-%20EngramaCoreStandar.md). Guía de helpers: [8- Guia Consultas SP.md](8-%20Guia%20Consultas%20SP.md).
 
 ### Recomendaciones
-- Asegúrese de que los nombres de los procedimientos almacenados y sus parámetros sean idénticos a los definidos en las clases `Request` y `Result` para evitar errores.  
-- Valide que los procedimientos almacenados estén optimizados para mejorar el rendimiento de las consultas.  
+- Asegúrese de que los nombres de los procedimientos almacenados y sus parámetros sean idénticos a los definidos en las clases `Request` y `Result` para evitar errores.
+- Valide que los procedimientos almacenados estén optimizados para mejorar el rendimiento de las consultas.
 - Considere agregar documentación en el código (por ejemplo, comentarios XML) para mejorar la legibilidad y el mantenimiento.
 
 ## Conclusión
-La capa de Infraestructura en la metodología Engrama proporciona una estructura robusta y estandarizada para interactuar con la base de datos, utilizando procedimientos almacenados y Dapper para consultas eficientes. La organización en carpetas (`Interfaces`, `Repository`, `Entities`) y las convenciones de nomenclatura aseguran que el código sea claro, mantenible y escalable, alineándose con los principios de Clean Architecture adaptados al enfoque Engrama.
+La capa de Infraestructura en la metodología Engrama proporciona una estructura robusta y estandarizada para interactuar con la base de datos, utilizando procedimientos almacenados y Dapper vía **EngramaCoreStandar**. La organización en carpetas (`Interfaces`, `Repository`, `Entities`) y las convenciones de nomenclatura aseguran que el código sea claro, mantenible y escalable, alineándose con los principios de Clean Architecture adaptados al enfoque Engrama.

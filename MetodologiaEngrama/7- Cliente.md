@@ -6,7 +6,14 @@ La capa de **Cliente** en la metodología Engrama utiliza **.NET Blazor WebAssem
 
 - **.NET Blazor WebAssembly**: Framework utilizado para crear aplicaciones web interactivas, optimizadas para ejecución en el navegador.
 - **MudBlazor**: Biblioteca de componentes que proporciona elementos de interfaz predefinidos, como tablas, formularios y barras de notificación, para acelerar el desarrollo.
-- **EngramaCoreStandard**: Paquete que incluye servicios y clases estándar de Engrama, como `IHttpService`, `MapperHelper`, y `IValidaServicioService`, para estandarizar la interacción con la API y la lógica del cliente.
+- **EngramaCoreStandar**: Paquete/proyecto base. En el cliente se usan principalmente:
+  - `IHttpService` — `Get`, `Post`, `Put`, `Delete`, multipart
+  - `IValidaServicioService.ValidadionServicio` — `HttpResponseWrapper<Response<T>>` → `SeverityMessage`
+  - `MapperHelper` — mapeos en `Main*` si se requieren
+  - Extensiones (`IsEmpty`, `NotNull`, …) y `SeverityMessage` para snackbars (`ShowSnake`)
+  - Registro: `AddEngramaDependenciesBlazor()` + `HttpClient` con `BaseAddress`
+  - Referencia completa: [0- EngramaCoreStandar.md](0-%20EngramaCoreStandar.md) § 6  
+  - Guía en la app: ruta `/guia-engrama-core`
 
 ## Estructura del Cliente
 
@@ -34,242 +41,123 @@ La estructura de carpetas en el proyecto cliente está diseñada para mantener l
 
 ## Arquitectura de Tabs (Workspace System)
 
-La arquitectura de tabs permite abrir múltiples módulos simultáneamente en pestañas, similar a un IDE. El sistema se compone de:
+La arquitectura de tabs permite abrir múltiples módulos simultáneamente en pestañas, similar a un IDE. Hay una separación clara de responsabilidades:
+
+- **`WorkspaceService`**: hub de eventos (abrir tab, menú del toolbar, renombrar, estado, cerrar). **No** posee la lista de pestañas.
+- **`MainLayout`**: dueño del estado de las pestañas (`tabsList`, índice activo). Escucha los eventos del servicio y renderiza con `MudTabs` + `DynamicComponent`.
 
 ### Flujo del Sistema de Tabs
 
 ```
-Usuario hace clic en menú → ToolbarSuperior → WorkspaceService.AgregarComponenteTab()
-    → Evento MenuChanged → MainLayout.AbrirComponenteEnPestaña()
-    → DynamicComponent renderiza el componente activo
+Usuario abre módulo → WorkspaceService.AddComponenteTab(tab)
+    → Evento OnMenuTabSelected → MainLayout.AddTab(tab)
+    → Deduplicación por identidad (tipo + EntityId + modo, o ForceNewTab)
+    → MudTabs + DynamicComponent renderizan cada pestaña abierta
 ```
 
-### WorkspaceService (Servicio de Tabs)
+Mientras exista al menos una pestaña, `MainLayout` oculta `@Body` (rutas normales). Al cerrar todas, vuelve a mostrarse la página enrutada (por ejemplo Inicio). Esto es intencional: el workspace prioriza el trabajo multi-módulo sobre deep-linking.
 
-El `WorkspaceService` es el中枢 central que gestiona el estado de las pestañas y los eventos del menú:
+### WorkspaceService (Hub de eventos)
+
+El servicio es un **Singleton** en Blazor WASM (un cliente = un usuario). Expone eventos y métodos para que los módulos no dependan de `MainLayout`:
 
 ```csharp
 public class WorkspaceService
 {
-    // Lista de pestañas abiertas
-    public List<WorkspaceTab> LstWorkspaceTabs { get; set; } = new();
+    public event Action<WorkspaceTab> OnMenuTabSelected;
+    public void AddComponenteTab(WorkspaceTab tab)
+        => OnMenuTabSelected?.Invoke(tab);
 
-    // Pestaña actualmente activa
-    public WorkspaceTab? TabActiva { get; set; }
+    public event Action MenuChanged;
+    public IReadOnlyList<MenuItemModel> CurrentMenuItems { get; }
+    public void SetMenuItems(List<MenuItemModel> menuItems) { /* ... */ }
 
-    // Evento que se dispara cuando se agrega/quita una pestaña
-    public event Action? OnTabsChanged;
+    public event Action<string, string> TabNameChanged;
+    public void SetCurrentTabName(string tabName, string iconText) { /* ... */ }
 
-    // Evento que se dispara cuando el menú solicita abrir un componente
-    public event Action<WorkspaceTab>? MenuChanged;
+    public event Action<TipoEstadoControl> TabStateChanged;
+    public void SetCurrentTabState(TipoEstadoControl tabState) { /* ... */ }
 
-    /// <summary>
-    /// Registra un componente como opción de menú en el toolbar.
-    /// Se llama desde OnInitializedAsync de cada módulo.
-    /// </summary>
-    public void AddComponenteTab(string module, string texto, string icon, 
-        Type componentType, Dictionary<string, object> parameters = null)
-    {
-        if (!LstMenuItem.Any(x => x.Text == texto))
-        {
-            LstMenuItem.Add(new MenuItemModel
-            {
-                Module = module,
-                Text = texto,
-                Icon = icon,
-                ComponentType = componentType,
-                Parameters = parameters
-            });
-            OnMenuChanged();
-        }
-    }
-
-    /// <summary>
-    /// Abre un componente en una nueva pestaña o activa existente.
-    /// </summary>
-    public void AgregarComponenteTab(WorkspaceTab tab)
-    {
-        var existing = LstWorkspaceTabs.FirstOrDefault(x => 
-            x.ComponentType == tab.ComponentType);
-
-        if (existing != null)
-        {
-            TabActiva = existing;
-        }
-        else
-        {
-            tab.Id = Guid.NewGuid().ToString();
-            LstWorkspaceTabs.Add(tab);
-            TabActiva = tab;
-        }
-
-        OnTabsChanged?.Invoke();
-        MenuChanged?.Invoke(tab);
-    }
-
-    /// <summary>
-    /// Cierra una pestaña y selecciona la adyacente.
-    /// </summary>
-    public void CerrarPestaña(string tabId)
-    {
-        var tab = LstWorkspaceTabs.FirstOrDefault(x => x.Id == tabId);
-        if (tab == null) return;
-
-        var index = LstWorkspaceTabs.IndexOf(tab);
-        LstWorkspaceTabs.Remove(tab);
-
-        if (TabActiva?.Id == tabId)
-        {
-            TabActiva = LstWorkspaceTabs.Count > 0
-                ? LstWorkspaceTabs[Math.Min(index, LstWorkspaceTabs.Count - 1)]
-                : null;
-        }
-
-        OnTabsChanged?.Invoke();
-    }
-
-    /// <summary>
-    /// Selecciona una pestaña como activa.
-    /// </summary>
-    public void SeleccionarPestaña(string tabId)
-    {
-        TabActiva = LstWorkspaceTabs.FirstOrDefault(x => x.Id == tabId);
-        OnTabsChanged?.Invoke();
-    }
+    public event Action<bool> CloseCurrentTab;
+    public void SetCloseCurrentTab(bool withWarning = false) { /* ... */ }
 }
 ```
 
-### WorkspaceTab (Modelo de Tab)
+#### Explicación
+- Abrir una pestaña: `AddComponenteTab` → `MainLayout` agrega o activa.
+- Toolbar: cada Grid/Form llama `SetMenuItems` en su init; `ToolbarSuperior` lee `CurrentMenuItems`.
+- Renombrar / estado / cerrar: eventos que `MainLayout` aplica sobre la pestaña activa (o por `Id` al cerrar desde la X).
 
-Cada pestaña se representa con un `WorkspaceTab` que contiene el tipo de componente a renderizar y sus parámetros:
+### WorkspaceTab (Modelo de Tab)
 
 ```csharp
 public class WorkspaceTab
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Titulo { get; set; } = string.Empty;
-    public string Icono { get; set; } = Icons.Material.Filled.Tab;
-    public Type ComponentType { get; set; } = default!;
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Icono { get; set; }
+    public string Text { get; set; }
+    public Type TipoControl { get; set; }
     public Dictionary<string, object> Parameters { get; set; } = new();
+    public TipoEstadoControl EstadoControl { get; set; }
+    public object EntityId { get; set; }
+    public bool ForceNewTab { get; set; }
+
+    /// <summary>
+    /// Identidad para deduplicar: TipoControl | EntityId | EstadoControl.
+    /// Si ForceNewTab == true, la identidad es única (siempre abre otra pestaña).
+    /// EntityId / ForceNewTab NO van en Parameters (DynamicComponent solo acepta [Parameter] del componente).
+    /// </summary>
+    public string GetIdentityKey() { /* ver implementación en código */ }
 }
 ```
 
-### MainLayout (Layout Genérico con DynamicComponent)
+**Parámetros de identidad recomendados**
 
-El `MainLayout` es genérico y no contiene código específico de módulos. Utiliza `DynamicComponent` para renderizar el componente activo:
+| Campo | Uso |
+|-----------|-----|
+| `Parameters["Data"]` | Instancia `Main*` del módulo ([Parameter] del componente) |
+| `Parameters["EstadoControl"]` / `EstadoControl` | `Lectura` / `Edicion` / `Alta` |
+| `Parameters["Registro"]` | Snapshot de la entidad en el formulario |
+| `EntityId` (en el tab) | Id para dedupe (no pasar a DynamicComponent) |
+| `ForceNewTab` (en el tab) | `true` fuerza una pestaña nueva (Altas) |
 
-```razor
-@inherits LayoutComponentBase
+### MainLayout (Dueño del estado + DynamicComponent)
 
-@using Microsoft.AspNetCore.Components
-@using Microsoft.AspNetCore.Components.Web
-@using MudBlazor
-@using TemplatePWA.PWA.Shared.Workspace
-
-<div class="aurora-background">
-    <div class="aurora-layer aurora-1"></div>
-    <div class="aurora-layer aurura-2"></div>
-    <div class="aurora-layer aurora-3"></div>
-</div>
-
-<MudThemeProvider Theme="_theme" />
-<MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
-
-<MudLayout>
-    <MudAppBar Elevation="1" Class="glassmorphism-appbar">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" 
-            OnClick="ToggleDrawer" />
-        <MudText Typo="Typo.h6" Class="px-4" Style="color: #FFFFFF;">
-            Template PWA
-        </MudText>
-        <MudSpacer />
-        <ToolbarSuperior />
-    </MudAppBar>
-
-    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" 
-        Elevation="2" Class="glassmorphism-drawer">
-        <MudNavMenu>
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
-                Inicio
-            </MudNavLink>
-            @foreach (var module in _workspaceService.LstMenuItem)
-            {
-                <MudNavLink Icon="@module.Icon" 
-                    OnClick="@(() => _workspaceService.AgregarComponenteTab(new WorkspaceTab
-                    {
-                        Titulo = module.Text,
-                        Icono = module.Icon,
-                        ComponentType = module.ComponentType,
-                        Parameters = module.Parameters ?? new()
-                    }))">
-                    @module.Text
-                </MudNavLink>
-            }
-        </MudNavMenu>
-    </MudDrawer>
-
-    <MudMainContent Class="glassmorphism-main">
-        <div class="main-content-wrapper">
-            @if (_workspaceService.TabActiva != null)
-            {
-                <div class="tabs-header">
-                    @foreach (var tab in _workspaceService.LstWorkspaceTabs)
-                    {
-                        <div class="tab-item @(tab.Id == _workspaceService.TabActiva?.Id ? "active" : "")"
-                            @onclick="@(() => _workspaceService.SeleccionarPestaña(tab.Id))">
-                            <MudIcon Icon="@tab.Icono" Size="Size.Small" />
-                            <span>@tab.Titulo</span>
-                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
-                                OnClick="@(() => _workspaceService.CerrarPestaña(tab.Id))" />
-                        </div>
-                    }
-                </div>
-
-                <div class="tab-content">
-                    <DynamicComponent Type="@_workspaceService.TabActiva.ComponentType" 
-                        Parameters="@_workspaceService.TabActiva.Parameters" />
-                </div>
-            }
-            else
-            {
-                @Body
-            }
-        </div>
-    </MudMainContent>
-</MudLayout>
-```
-
-#### Explicación
-- **DynamicComponent**: Renderiza dinámicamente el componente activo basado en `TabActiva.ComponentType`
-- **Parameters**: Pasa parámetros al componente usando `Dictionary<string, object>`
-- **Genérico**: No hay referencias a módulos específicos; todo se registra dinámicamente
-
-### ToolbarSuperior (Barra de Herramientas Dinámica)
-
-El `ToolbarSuperior` muestra los módulos registrados como opciones de menú:
+`MainLayout` es genérico: no referencia módulos concretos. Posee `tabsList` y suscribe los eventos del `WorkspaceService` en `OnInitialized`; en `Dispose` debe desuscribir **todos** los handlers.
 
 ```razor
-@using TemplatePWA.PWA.Shared.Workspace
-@inject WorkspaceService WorkspaceService
-
-<div class="toolbar-superior">
-    @foreach (var menu in WorkspaceService.LstMenuItem)
-    {
-        <MudTooltip Text="@menu.Text">
-            <MudIconButton Icon="@menu.Icon" Color="Color.Inherit"
-                OnClick="@(() => WorkspaceService.AgregarComponenteTab(new WorkspaceTab
-                {
-                    Titulo = menu.Text,
-                    Icono = menu.Icon,
-                    ComponentType = menu.ComponentType,
-                    Parameters = menu.Parameters ?? new()
-                }))" />
-        </MudTooltip>
-    }
-</div>
+@if (tabsList.Count != 0)
+{
+    <ToolbarSuperior OnCloseTab="CloseCurrentTabAsync" />
+    <MudTabs ActivePanelIndex="tabsSelectedIndex" ActivePanelIndexChanged="OnTabChanged">
+        @foreach (var tab in tabsList)
+        {
+            <MudTabPanel>
+                <ChildContent>
+                    <DynamicComponent Type="tab.TipoControl" Parameters="tab.Parameters" />
+                </ChildContent>
+                <TabContent>
+                    <!-- Título + X que cierra ESTA pestaña (tab.Id), no solo la activa -->
+                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                   OnClick="@(() => CloseTabAsync(tab))" />
+                </TabContent>
+            </MudTabPanel>
+        }
+    </MudTabs>
+}
+else
+{
+    @Body
+}
 ```
+
+**Deduplicación en `AddTab`**: si ya existe una pestaña con la misma `GetIdentityKey()`, se activa; si no, se agrega. Grids sin `EntityId`/`ForceNewTab` se reutilizan por `TipoControl`. Formularios con `EntityId` + modo pueden coexistir (Ver 5 y Editar 7 a la vez).
+
+**Estado en memoria**: el estado de negocio debe vivir en `Main*` (pasado en `Parameters["Data"]`), no solo en el componente visual, porque paneles inactivos de MudBlazor pueden remontarse.
+
+### ToolbarSuperior (Barra de acciones del módulo activo)
+
+Muestra `WorkspaceService.CurrentMenuItems` (botones del Grid/Form activo) y un botón para cerrar la pestaña actual vía `EventCallback OnCloseTab`.
 
 ## Convenciones para Componentes CRUD (Tabs)
 
@@ -319,7 +207,8 @@ public class MainMiEntidad
         var model = new DtoMiEntidad();
 
         var response = await httpService.Post<DtoMiEntidad, Response<List<MiEntidad>>>(apiUrl, model);
-        var validation = validaServicioService.ValidacionServicio(response,
+        // Nombre histórico del método en EngramaCoreStandar
+        var validation = validaServicioService.ValidadionServicio(response,
             onSuccess: data => LstMiEntidad = data.ToList());
 
         return validation;
@@ -329,7 +218,7 @@ public class MainMiEntidad
     {
         var apiUrl = $"{url}/PostSaveRegistro";
         var response = await httpService.Post<MiEntidad, Response<bool>>(apiUrl, EntidadSeleccionada);
-        var validation = validaServicioService.ValidacionServicio(response,
+        var validation = validaServicioService.ValidadionServicio(response,
             onSuccess: data => { /* éxito */ });
 
         return validation;
@@ -454,12 +343,12 @@ public partial class MainMiEntidad : EngramaComponent
     {
         Data = new MainMiEntidad(httpService, mapperHelper, validaServicioService);
 
-        // Registrar este módulo en el workspace
-        WorkspaceService.AgregarComponenteTab(new WorkspaceTab
+        // Abrir este módulo en una pestaña del workspace
+        WorkspaceService.AddComponenteTab(new WorkspaceTab
         {
-            Titulo = "Mi Entidad",
+            Text = "Mi Entidad",
             Icono = Icons.Material.Filled.TableChart,
-            ComponentType = typeof(MainMiEntidad),
+            TipoControl = typeof(GridMiEntidad),
             Parameters = new Dictionary<string, object> { { "Data", Data } }
         });
     }
@@ -581,21 +470,23 @@ public enum TipoEstadoControl
 Los parámetros se pasan usando `Dictionary<string, object>` para compatibilidad con `DynamicComponent`:
 
 ```csharp
-// Registrar con parámetros
-WorkspaceService.AgregarComponenteTab(new WorkspaceTab
+WorkspaceService.AddComponenteTab(new WorkspaceTab
 {
-    Titulo = "Mi Módulo",
-    ComponentType = typeof(MiComponente),
+    Text = "Mi Módulo",
+    TipoControl = typeof(MiComponente),
+    EstadoControl = TipoEstadoControl.Edicion,
+    EntityId = 42,
+    // ForceNewTab = true,
     Parameters = new Dictionary<string, object>
     {
         { "Data", miInstancia },
-        { "Modo", "Edicion" }
+        { "EstadoControl", TipoEstadoControl.Edicion }
     }
 });
 
-// Recibir en el componente
+// Recibir en el componente (solo lo que va en Parameters)
 [Parameter] public MainMiEntidad Data { get; set; }
-[Parameter] public string Modo { get; set; }
+[Parameter] public TipoEstadoControl EstadoControl { get; set; }
 ```
 
 ### Evitar Infinite Loops
@@ -616,16 +507,49 @@ protected override void OnInitializedAsync()
 }
 ```
 
+## EngramaCoreStandar en el Cliente (PWA)
+
+Registro en `Program.cs`:
+
+```csharp
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) // o URL de la API
+});
+builder.Services.AddEngramaDependenciesBlazor();
+```
+
+| Pieza | API | Uso en Main* / componentes |
+|-------|-----|----------------------------|
+| `IHttpService` | `Get`, `Post`, `Put`, `Delete`, multipart | Llamadas tipadas a `api/…` |
+| `IValidaServicioService` | `ValidadionServicio` (nombre histórico) | `HttpResponseWrapper` → `SeverityMessage` + `onSuccess` |
+| `MapperHelper` | `Get` / `Map` | Mapeos locales si hacen falta |
+| `SeverityMessage` | `bResult`, `vchMessage`, `Severity` | Snackbars (`ShowSnake`) |
+| Extensiones | `IsEmpty`, `NotNull`, … | Validaciones UI |
+
+```csharp
+var response = await httpService.Post<DtoX, Response<List<Entity>>>(apiUrl, model);
+var msg = validaServicioService.ValidadionServicio(response,
+    onSuccess: data => Lst = data.ToList(),
+    ContinueWarning: true,
+    ContinueError: false);
+ShowSnake(msg);
+```
+
+También disponibles desde v1.1.2: `httpService.Put<…>` y `httpService.Delete(url)`.
+
+Catálogo: [0- EngramaCoreStandar.md](0-%20EngramaCoreStandar.md) § 6. Guía en app: `/guia-engrama-core`.
+
 ## Recomendaciones
 
 - **Modularidad**: Mantenga los módulos pequeños y enfocados en una sola funcionalidad para facilitar el mantenimiento.
 - **Reutilización**: Aproveche la clase `Main` para centralizar la lógica y evitar duplicación en páginas y componentes.
 - **Workspace**: Registre cada módulo CRUD en el `WorkspaceService` para habilitar el sistema de tabs.
 - **Genérico**: Nunca agregue código específico de módulos en `MainLayout`; todo se registra dinámicamente.
-- **Parámetros**: Use `Dictionary<string, object>` para pasar parámetros a través de `DynamicComponent`.
+- **Parámetros**: Use `Dictionary<string, object>` solo para `[Parameter]` del componente; identidad de tab (`EntityId`, `ForceNewTab`) vive en `WorkspaceTab`, no en `Parameters`.
 - **Estado**: Use `TipoEstadoControl` para gestionar el ciclo de vida de los formularios (Lectura → Edición → Alta).
 - **Estilo**: Personalice los estilos en `wwwroot/css/app.css` para el efecto aurora y glassmorphism.
 
 ## Conclusión
 
-La capa de Cliente en la metodología Engrama, basada en Blazor WebAssembly PWA y MudBlazor, utiliza un sistema de tabs dinámico que permite abrir múltiples módulos simultáneamente. La arquitectura se compone de `WorkspaceService` (gestión de tabs), `DynamicComponent` (renderizado dinámico), y `ToolbarSuperior` (menú dinámico). Los módulos CRUD se registran en el workspace y se renderizan como pestañas, mientras que las páginas de navegación usan rutas regulares. Esta arquitectura proporciona una interfaz de usuario tipo IDE, moderna y escalable.
+La capa de Cliente en la metodología Engrama, basada en Blazor WebAssembly PWA y MudBlazor, combina **EngramaCoreStandar** (`IHttpService`, `IValidaServicioService`) con el workspace de tabs (`WorkspaceService`, `DynamicComponent`, `ToolbarSuperior`). Los módulos CRUD se registran en el workspace y se renderizan como pestañas; las páginas de documentación usan rutas regulares.

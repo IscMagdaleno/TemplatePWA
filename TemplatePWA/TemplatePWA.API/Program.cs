@@ -16,7 +16,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 
-builder.Services.AddScoped<ITestDominio, TestDomain>();
+builder.Services.AddScoped<ITestDomain, TestDomain>();
 builder.Services.AddScoped<ITestRepository, TestRepository>();
 
 

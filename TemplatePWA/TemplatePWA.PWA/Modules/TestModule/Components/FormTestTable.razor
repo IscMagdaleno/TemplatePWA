@@ -4,26 +4,61 @@
 @inherits EngramaComponent
 
 <MudCard Elevation="3" Class="pa-4 glass-card">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">
+                @(EstadoControl == TipoEstadoControl.Alta ? "Nuevo registro" :
+                  EstadoControl == TipoEstadoControl.Edicion ? "Editar registro" : "Detalle")
+            </MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
     <MudCardContent>
         <MudGrid>
             <MudItem xs="12" sm="6">
-                <MudTextField T="string" Label="Nombre" Variant="Variant.Outlined" 
-                              Value="@(Data.RegistroSeleccionado?.vchName)" 
-                              ValueChanged="@((string val) => Data.RegistroSeleccionado.vchName = val)"
-                              ReadOnly="@(EstadoControl == TipoEstadoControl.Lectura)" />
+                <MudTextField T="string" Label="Nombre" Variant="Variant.Outlined"
+                              Value="@(Registro?.vchName)"
+                              ValueChanged="@((string val) => Registro.vchName = val)"
+                              ReadOnly="@(EstadoControl == TipoEstadoControl.Lectura)"
+                              Required="true" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField T="string" Label="Email" Variant="Variant.Outlined" 
-                              Value="@(Data.RegistroSeleccionado?.vchEmail)" 
-                              ValueChanged="@((string val) => Data.RegistroSeleccionado.vchEmail = val)"
-                              ReadOnly="@(EstadoControl == TipoEstadoControl.Lectura)" />
+                <MudTextField T="string" Label="Email" Variant="Variant.Outlined"
+                              Value="@(Registro?.vchEmail)"
+                              ValueChanged="@((string val) => Registro.vchEmail = val)"
+                              ReadOnly="@(EstadoControl == TipoEstadoControl.Lectura)"
+                              Required="true" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudDatePicker Label="Fecha Registro" Variant="Variant.Outlined" 
-                               Date="@(Data.RegistroSeleccionado?.dtRegistered)" 
-                               DateChanged="@((DateTime? val) => Data.RegistroSeleccionado.dtRegistered = val ?? DateTime.Now)"
+                <MudDatePicker Label="Fecha Registro" Variant="Variant.Outlined"
+                               Date="@(Registro?.dtRegistered)"
+                               DateChanged="@((DateTime? val) => Registro.dtRegistered = val ?? DateTime.Now)"
                                ReadOnly="@(EstadoControl == TipoEstadoControl.Lectura)" />
             </MudItem>
         </MudGrid>
     </MudCardContent>
+    <MudCardActions Class="pa-4">
+        @if (EstadoControl != TipoEstadoControl.Lectura)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Success"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="Submit"
+                       Class="mr-2">
+                Guardar
+            </MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Edit"
+                       OnClick="EnableEdit"
+                       Class="mr-2">
+                Editar
+            </MudButton>
+        }
+        <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                   StartIcon="@Icons.Material.Filled.Close"
+                   OnClick="CerrarTab">
+            Cerrar
+        </MudButton>
+    </MudCardActions>
 </MudCard>

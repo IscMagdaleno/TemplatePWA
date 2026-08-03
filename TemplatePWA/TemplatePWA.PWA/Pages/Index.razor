@@ -7,23 +7,49 @@
 @inject IHttpService HttpService
 @inject MapperHelper MapperHelper
 @inject IValidaServicioService ValidaServicioService
+@inject NavigationManager Navigation
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h3" Class="mb-4">Bienvenido a Engrama Template</MudText>
     <MudText Typo="Typo.body1" Class="mb-4">
-        Esta es una plantilla que sigue la metodología Engrama para aplicaciones Blazor WebAssembly PWA.
+        Plantilla Engrama (Clean Architecture + Blazor WASM PWA). EngramaCoreStandar se referencia
+        desde el código fuente local para probar cambios en Dapper y Servicios.
     </MudText>
-    <MudCard Class="glass-card">
-        <MudCardContent>
-            <MudText Typo="Typo.h6" Class="mb-2">Módulos Disponibles</MudText>
-            <MudButton Variant="Variant.Filled" 
-                       Color="Color.Primary" 
-                       StartIcon="@Icons.Material.Filled.TableChart"
-                       OnClick="OpenTestTable">
-                Catálogo de Test Table
-            </MudButton>
-        </MudCardContent>
-    </MudCard>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudCard Class="glass-card" Style="height: 100%;">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-2">Módulos demo</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        GetAll, Save y GetAllWithList (TVP) sobre Test_Table.
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.TableChart"
+                               OnClick="OpenTestTable">
+                        Catálogo de Test Table
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudCard Class="glass-card" Style="height: 100%;">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-2">Guía EngramaCoreStandar</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        DI, helpers Dapper, TVP, HttpService, Mapper y ejemplos listos para copiar.
+                    </MudText>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.MenuBook"
+                               Href="/guia-engrama-core">
+                        Abrir guía completa
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
 </MudContainer>
 
 @code {

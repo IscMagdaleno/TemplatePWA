@@ -1,0 +1,33 @@
+# Engrama methodology — always apply (Antigravity)
+
+Follow root `AGENTS.md`, `GEMINI.md`, and `MetodologiaEngrama/` (docs `0`–`8`).
+
+## Architecture
+
+- Layers: SQL → Infrastructure → Domain → Controllers → PWA; Share holds `Objects`/`DtoModels`.
+- Dependencies point inward; never call Dapper/SQL from Domain, Controllers, or PWA.
+- Data access only via stored procedures + `IDapperManagerHelper` (EngramaCoreStandar).
+
+## SOLID
+
+- One module concern per Domain/Repository/Controller/`Main*` class.
+- Depend on interfaces (`I*Domain`, `I*Repository`, `IHttpService`); register in DI.
+- Extend with new modules/SPs instead of bloating existing ones.
+
+## Engrama patterns
+
+- SP entities: `Request : SpRequest`, `Result : DbResult` (`bResult`, `vchMessage`).
+- Helpers: `GetAsync` / `GetAllAsync` / `GetWithListAsync` / `GetAllWithListAsync`.
+- Domain: `MapperHelper` + `IResponseHelper.Validacion` → `Response<T>`.
+- PWA: `IHttpService` + `ValidadionServicio`; tab identity on `WorkspaceTab`, not in `Parameters`.
+- Spelling: **EngramaCoreStandar**.
+
+## Comments (required)
+
+- XML `///` on public types and methods.
+- Short `//` on non-obvious logic (TVP, Save paths, workspace keys).
+- Comment intent; match the language style of the file.
+
+## Checklist for new features
+
+SQL (`DT*`/`sp*`) → Share DTO/Object → Entity + Repository → Domain → thin Controller → PWA `Main*`/UI.

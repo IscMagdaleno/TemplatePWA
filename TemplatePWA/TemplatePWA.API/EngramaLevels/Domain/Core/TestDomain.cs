@@ -1,6 +1,4 @@
-﻿// Ignore Spelling: Dominio
-
-using EngramaCoreStandar;
+﻿using EngramaCoreStandar;
 using EngramaCoreStandar.Mapper;
 using EngramaCoreStandar.Results;
 
@@ -17,7 +15,7 @@ namespace TemplatePWA.API.EngramaLevels.Domain.Core
 	/// Class where save all the core code and the logic business,
 	/// and convert the data base response to object to get back the user
 	/// </summary>
-	public class TestDomain : ITestDominio
+	public class TestDomain : ITestDomain
 	{
 		private readonly ITestRepository testRepository;
 		private readonly MapperHelper mapperHelper;
@@ -73,36 +71,51 @@ namespace TemplatePWA.API.EngramaLevels.Domain.Core
 		}
 
 
-		public async Task<Response<Test_Table>> GetTestTableDataType(DtoGetTestTableDataType PostModel)
+		/// <summary>
+		/// Demo: send a list of DTParameterType rows to SQL as TVP and filter Test_Table by iParameter (IDs).
+		/// Do not use MapperHelper on the full DTO: Share.DTParameterType ≠ Infrastructure.DTParameterType,
+		/// and AutoMapper fails on Parameters. Map scalars + TVP rows explicitly.
+		/// </summary>
+		public async Task<Response<IEnumerable<Test_Table>>> GetTestTableDataType(DtoGetTestTableDataType PostModel)
 		{
 			try
 			{
-				var model = mapperHelper.Get<DtoGetTestTableDataType, spGetTestTableDataType.Request>(PostModel);
-
-				//business logic
-				var lista = new List<Infrastructure.Entity.DTParameterType>();
-
-				lista.Add(new Infrastructure.Entity.DTParameterType
+				// Build Request by hand — avoids AutoMapper mapping Share.DT* → Infrastructure.DT*
+				// dtRegistered must be a valid SqlDateTime (≥ 1753); default DateTime is 0001-01-01 and overflows.
+				var model = new spGetTestTableDataType.Request
 				{
-					vchParameter = "valor",
-					dtParameter = Defaults.SqlMinDate()
-				});
-				model.Parameters = lista;
-
+					iIdTest_Table = PostModel.iIdTest_Table,
+					vchName = PostModel.vchName,
+					vchEmail = PostModel.vchEmail,
+					dtRegistered = ToSqlDate(PostModel.dtRegistered),
+					Parameters = (PostModel.Parameters ?? Enumerable.Empty<Share.DtoModels.TestModule.DTParameterType>())
+						.Select(p => new Infrastructure.Entity.DTParameterType
+						{
+							iParameter = p.iParameter,
+							vchParameter = p.vchParameter ?? string.Empty,
+							dtParameter = ToSqlDate(p.dtParameter),
+							mParametr = p.mParametr,
+							smParameter = p.smParameter,
+							bParameter = p.bParameter
+						})
+						.ToList()
+				};
 
 				var result = await testRepository.spGetTestTableDataType(model);
-				var validation = responseHelper.Validacion<spGetTestTableDataType.Result, Test_Table>(result);
-				if (validation.IsSuccess)
-				{
-					PostModel.vchEmail = validation.Data.vchEmail;
-					validation.Data = mapperHelper.Get<DtoGetTestTableDataType, Test_Table>(PostModel);
-				}
-				return validation;
+				return responseHelper.Validacion<spGetTestTableDataType.Result, Test_Table>(result);
 			}
 			catch (Exception ex)
 			{
-				return Response<Test_Table>.BadResult(ex.Message, new());
+				return Response<IEnumerable<Test_Table>>.BadResult(ex.Message, new List<Test_Table>());
 			}
+		}
+
+		/// <summary>
+		/// Coerces CLR default / out-of-range dates to Engrama SQL-safe minimum (1900-01-01).
+		/// </summary>
+		private static DateTime ToSqlDate(DateTime value)
+		{
+			return value < Defaults.SqlMinDate() ? Defaults.SqlMinDate() : value;
 		}
 
 

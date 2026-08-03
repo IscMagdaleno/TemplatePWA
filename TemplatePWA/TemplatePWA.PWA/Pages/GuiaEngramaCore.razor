@@ -1,0 +1,362 @@
+@page "/guia-engrama-core"
+@using MudBlazor
+@inject IJSRuntime JS
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-8">
+    <MudText Typo="Typo.h3" Class="mb-2">Guía EngramaCoreStandar</MudText>
+    <MudText Typo="Typo.subtitle1" Class="mb-4" Style="opacity:0.85;">
+        Cómo usar el proyecto local <code>EngramaCoreStandar</code> (v1.1.2) desde API y PWA — con ejemplos del Template.
+    </MudText>
+
+    <MudAlert Severity="Severity.Info" Variant="Variant.Filled" Class="mb-4" Dense="true">
+        Este template referencia el código fuente en
+        <strong>EngramaCoreStandar/EngramaCoreStandar</strong>, no el NuGet de nuget.org.
+        Cualquier cambio en Dapper o Servicios se prueba al recompilar la solución.
+    </MudAlert>
+
+    <MudPaper Class="pa-4 mb-4 glass-card" Elevation="0">
+        <MudText Typo="Typo.h6" Class="mb-2">Índice</MudText>
+        <MudStack Spacing="0">
+            @foreach (var item in _index)
+            {
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Primary"
+                           Class="justify-start text-left text-transform-none"
+                           Style="justify-content: flex-start;"
+                           OnClick="@(() => GoToSectionAsync(item.Key))">
+                    @item.Label
+                </MudButton>
+            }
+        </MudStack>
+    </MudPaper>
+
+    <MudExpansionPanels MultiExpansion="true" Class="mb-4">
+
+        <MudExpansionPanel Text="1. Setup y referencia de proyecto" @bind-Expanded="_expSetup">
+            <div @ref="_refSetup"></div>
+            <MudText Class="mb-2">
+                En <code>TemplatePWA.Share.csproj</code> se usa <strong>ProjectReference</strong> al código local:
+            </MudText>
+            <pre class="code-block">@SetupCsproj</pre>
+            <MudText Class="mb-2">
+                API y PWA referencian Share, así que heredan EngramaCoreStandar. El proyecto también está en
+                <code>TemplateBlazorPWA.sln</code> para editarlo y depurarlo juntos.
+            </MudText>
+            <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">Connection string (API)</MudText>
+            <MudText Class="mb-2">Clave fija que lee Dapper:</MudText>
+            <pre class="code-block">@AppsettingsSnippet</pre>
+        </MudExpansionPanel>
+
+        <MudExpansionPanel Text="2. Inyección de dependencias (DI)" @bind-Expanded="_expDi">
+            <div @ref="_refDi"></div>
+            <MudText Typo="Typo.subtitle2" Class="mb-1">API — Program.cs</MudText>
+            <pre class="code-block">@DiApi</pre>
+            <MudText Class="mb-2">Registra: <code>IDapperManagerHelper</code>, <code>IResponseHelper</code>, <code>MapperHelper</code>, <code>ILoggerHelper</code>.</MudText>
+
+            <MudText Typo="Typo.subtitle2" Class="mb-1 mt-3">PWA (Blazor WASM) — Program.cs</MudText>
+            <pre class="code-block">@DiBlazor</pre>
+            <MudText>
+                Registra: <code>IHttpService</code>, <code>IValidaServicioService</code>, <code>MapperHelper</code>.
+                Debes registrar también <code>HttpClient</code> con <code>BaseAddress</code> apuntando a la API.
+            </MudText>
+        </MudExpansionPanel>
+
+        <MudExpansionPanel Text="3. Dapper — consultar stored procedures" @bind-Expanded="_expDapper">
+            <div @ref="_refDapper"></div>
+            <MudText Class="mb-2">
+                Contratos: <code>SpRequest</code> (nombre del SP) y <code>DbResult</code> (<code>bResult</code>, <code>vchMessage</code>).
+            </MudText>
+
+            <MudSimpleTable Dense="true" Hover="true" Class="mb-3">
+                <thead>
+                    <tr>
+                        <th>Helper</th>
+                        <th>¿Lista TVP?</th>
+                        <th>Retorno</th>
+                        <th>Ejemplo template</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>GetAsync&lt;TResult, TRequest&gt;</code></td>
+                        <td>No</td>
+                        <td>1 fila</td>
+                        <td><code>spSaveTest_Table</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>GetAllAsync&lt;TResult, TRequest&gt;</code></td>
+                        <td>No</td>
+                        <td>N filas</td>
+                        <td><code>spGetTestTable</code> (grid)</td>
+                    </tr>
+                    <tr>
+                        <td><code>GetWithListAsync</code></td>
+                        <td>Sí</td>
+                        <td>1 fila</td>
+                        <td>SP con TVP + un resultado</td>
+                    </tr>
+                    <tr>
+                        <td><code>GetAllWithListAsync</code></td>
+                        <td>Sí</td>
+                        <td>N filas</td>
+                        <td><code>spGetTestTableDataType</code> (Filtrar por TVP)</td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+
+            <MudText Typo="Typo.subtitle2" Class="mb-1">Entity Request / Result</MudText>
+            <pre class="code-block">@EntityExample</pre>
+
+            <MudText Typo="Typo.subtitle2" Class="mb-1 mt-3">Repositorio — GetAll</MudText>
+            <pre class="code-block">@RepoGetAll</pre>
+
+            <MudText Typo="Typo.subtitle2" Class="mb-1 mt-3">Repositorio — Get (Save)</MudText>
+            <pre class="code-block">@RepoGetAsync</pre>
+        </MudExpansionPanel>
+
+        <MudExpansionPanel Text="4. Listas / TVP (DataType)" @bind-Expanded="_expTvp">
+            <div @ref="_refTvp"></div>
+            <MudText Class="mb-2">
+                Para enviar una colección a SQL Server como Table-Valued Parameter:
+            </MudText>
+            <MudList T="string" Dense="true">
+                <MudListItem Icon="@Icons.Material.Filled.LooksOne">SQL: <code>CREATE TYPE dbo.DTParameterType AS TABLE (...)</code></MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.LooksTwo">SP: <code>@@Parameters DTParameterType READONLY</code> y usar la tabla en el WHERE/JOIN</MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.Looks3">C#: clase <code>DTParameterType</code> con las mismas columnas (el nombre = tipo SQL)</MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.Looks4">Request: <code>IEnumerable&lt;DTParameterType&gt; Parameters</code> (nombre = parámetro SQL)</MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.Looks5">Repo: <code>GetAllWithListAsync</code> o <code>GetWithListAsync</code></MudListItem>
+            </MudList>
+            <MudText Typo="Typo.subtitle2" Class="mb-1 mt-3">Ejemplo repositorio</MudText>
+            <pre class="code-block">@RepoTvp</pre>
+            <MudAlert Severity="Severity.Success" Dense="true" Class="mt-2">
+                En v1.1.2 las listas vacías generan un DataTable con columnas (schema), para que el TVP no falle en SQL.
+            </MudAlert>
+        </MudExpansionPanel>
+
+        <MudExpansionPanel Text="5. Servicios HTTP (PWA / Blazor)" @bind-Expanded="_expServicios">
+            <div @ref="_refServicios"></div>
+            <MudText Class="mb-2">
+                <code>IHttpService</code> tipa llamadas a la API. <code>IValidaServicioService</code> convierte
+                <code>Response&lt;T&gt;</code> en <code>SeverityMessage</code> para snackbars.
+            </MudText>
+            <MudText Typo="Typo.subtitle2" Class="mb-1">Métodos principales</MudText>
+            <MudText Class="mb-2">
+                <code>Get</code>, <code>Post</code>, <code>Put</code>, <code>Delete</code>, más helpers multipart (archivo / imagen / video).
+            </MudText>
+            <pre class="code-block">@HttpExample</pre>
+            <MudText Class="mt-2">
+                Tras el POST, usa <code>ValidadionServicio</code> (nombre histórico en el paquete) para actualizar el estado UI.
+            </MudText>
+        </MudExpansionPanel>
+
+        <MudExpansionPanel Text="6. MapperHelper y Response" @bind-Expanded="_expMapper">
+            <div @ref="_refMapper"></div>
+            <MudText Class="mb-2">
+                <code>MapperHelper</code> (AutoMapper) convierte DTO Share ↔ Request de SP y Result ↔ objetos de dominio.
+                En Domain, <code>IResponseHelper.Validacion</code> arma <code>Response&lt;T&gt;</code> con <code>IsSuccess</code> / <code>Message</code> / <code>Data</code>.
+            </MudText>
+            <pre class="code-block">@DomainExample</pre>
+        </MudExpansionPanel>
+
+        <MudExpansionPanel Text="7. Extensions y otras carpetas" @bind-Expanded="_expExtensions">
+            <div @ref="_refExtensions"></div>
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead>
+                    <tr><th>Carpeta / tipo</th><th>Uso</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>Extensions/</code></td><td><code>IsNull</code>, <code>IsEmpty</code>, <code>NotEmpty</code>, fechas, strings, listas, DI</td></tr>
+                    <tr><td><code>General/Defaults</code></td><td>Fechas mínimas SQL, valores por defecto</td></tr>
+                    <tr><td><code>General/Jsons</code></td><td>Serialización Newtonsoft</td></tr>
+                    <tr><td><code>Logger/</code></td><td><code>ILoggerHelper</code> — logs de validación SP en consola</td></tr>
+                    <tr><td><code>Dapper/Results</code></td><td><code>DataResult</code>, <code>Response</code>, <code>SeverityMessage</code></td></tr>
+                </tbody>
+            </MudSimpleTable>
+        </MudExpansionPanel>
+
+        <MudExpansionPanel Text="8. Demostración en este template" @bind-Expanded="_expDemo">
+            <div @ref="_refDemo"></div>
+            <MudText Class="mb-3">Prueba cada helper desde la UI:</MudText>
+            <MudStack Row="true" Spacing="2" Class="mb-3 flex-wrap">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.TableChart"
+                           Href="/">
+                    Inicio → Catálogo
+                </MudButton>
+            </MudStack>
+            <MudList T="string" Dense="true">
+                <MudListItem Icon="@Icons.Material.Filled.Download">
+                    <strong>GetAll</strong> — al abrir “Catálogo de Test Table” carga con <code>GetAllAsync</code> / <code>spGetTestTable</code>
+                </MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.Add">
+                    <strong>Save / Get</strong> — botón Agregar → formulario → Guardar → <code>GetAsync</code> / <code>spSaveTest_Table</code>
+                </MudListItem>
+                <MudListItem Icon="@Icons.Material.Filled.FilterList">
+                    <strong>GetAllWithList</strong> — “Filtrar por TVP” → <code>GetAllWithListAsync</code> / <code>spGetTestTableDataType</code>
+                </MudListItem>
+            </MudList>
+            <MudText Class="mt-3" Typo="Typo.caption">
+                Documentación Markdown: <code>MetodologiaEngrama/8- Guia Consultas SP.md</code> y
+                <code>EngramaCoreStandar/README.md</code>.
+            </MudText>
+        </MudExpansionPanel>
+
+    </MudExpansionPanels>
+</MudContainer>
+
+<style>
+    .code-block {
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 0.8rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        font-family: ui-monospace, Consolas, monospace;
+    }
+</style>
+
+@code {
+    private bool _expSetup = true;
+    private bool _expDi;
+    private bool _expDapper;
+    private bool _expTvp;
+    private bool _expServicios;
+    private bool _expMapper;
+    private bool _expExtensions;
+    private bool _expDemo = true;
+
+    private ElementReference _refSetup;
+    private ElementReference _refDi;
+    private ElementReference _refDapper;
+    private ElementReference _refTvp;
+    private ElementReference _refServicios;
+    private ElementReference _refMapper;
+    private ElementReference _refExtensions;
+    private ElementReference _refDemo;
+
+    private readonly (string Key, string Label)[] _index =
+    {
+        ("setup", "1. Setup y referencia de proyecto"),
+        ("di", "2. Inyección de dependencias (DI)"),
+        ("dapper", "3. Dapper — consultar SPs"),
+        ("tvp", "4. Listas / TVP (DataType)"),
+        ("servicios", "5. Servicios HTTP (PWA)"),
+        ("mapper", "6. MapperHelper y Response"),
+        ("extensions", "7. Extensions y utilidades"),
+        ("demo", "8. Demostración en este template")
+    };
+
+    private async Task GoToSectionAsync(string key)
+    {
+        switch (key)
+        {
+            case "setup": _expSetup = true; break;
+            case "di": _expDi = true; break;
+            case "dapper": _expDapper = true; break;
+            case "tvp": _expTvp = true; break;
+            case "servicios": _expServicios = true; break;
+            case "mapper": _expMapper = true; break;
+            case "extensions": _expExtensions = true; break;
+            case "demo": _expDemo = true; break;
+        }
+
+        StateHasChanged();
+        await Task.Delay(100);
+
+        var target = key switch
+        {
+            "setup" => _refSetup,
+            "di" => _refDi,
+            "dapper" => _refDapper,
+            "tvp" => _refTvp,
+            "servicios" => _refServicios,
+            "mapper" => _refMapper,
+            "extensions" => _refExtensions,
+            "demo" => _refDemo,
+            _ => _refSetup
+        };
+
+        await JS.InvokeVoidAsync("engramaScrollIntoView", target);
+    }
+
+    private const string SetupCsproj = """
+<ItemGroup>
+  <ProjectReference Include="..\..\EngramaCoreStandar\EngramaCoreStandar\EngramaCoreStandar.csproj" />
+</ItemGroup>
+""";
+
+    private const string AppsettingsSnippet = """
+"ConnectionStrings": {
+  "EngramaCloudConnection": "Server=...;Database=Engrama;..."
+}
+""";
+
+    private const string DiApi = """
+using EngramaCoreStandar.Extensions;
+
+builder.Services.AddEngramaDependenciesAPI();
+""";
+
+    private const string DiBlazor = """
+using EngramaCoreStandar.Extensions;
+
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+});
+builder.Services.AddEngramaDependenciesBlazor();
+""";
+
+    private const string EntityExample = """
+public class spGetTestTable
+{
+    public class Request : SpRequest
+    {
+        public string StoredProcedure { get => "spGetTestTable"; }
+    }
+    public class Result : DbResult
+    {
+        public bool bResult { get; set; }
+        public string vchMessage { get; set; }
+        public int iIdTest_Table { get; set; }
+        public string vchName { get; set; }
+        // ...
+    }
+}
+""";
+
+    private const string RepoGetAll = """
+var respuesta = await _managerHelper
+    .GetAllAsync<spGetTestTable.Result, spGetTestTable.Request>(daoModel, "");
+if (respuesta.Ok) return respuesta.Data;
+""";
+
+    private const string RepoGetAsync = """
+var result = await _managerHelper
+    .GetAsync<spSaveTest_Table.Result, spSaveTest_Table.Request>(postModel);
+if (result.Ok) return result.Data;
+""";
+
+    private const string RepoTvp = """
+var result = await _managerHelper
+    .GetAllWithListAsync<spGetTestTableDataType.Result, spGetTestTableDataType.Request>(postModel);
+""";
+
+    private const string HttpExample = """
+var response = await _httpService
+    .Post<DtoTestTable, Response<List<Test_Table>>>(apiUrl, model);
+
+var msg = validaServicioService.ValidadionServicio(response,
+    onSuccess: data => LstTestTable = data.ToList());
+ShowSnake(msg);
+""";
+
+    private const string DomainExample = """
+var model = mapperHelper.Get<DtoSave, spSave.Request>(postModel);
+var result = await repo.spSave(model);
+return responseHelper.Validacion<spSave.Result, Entity>(result);
+""";
+}

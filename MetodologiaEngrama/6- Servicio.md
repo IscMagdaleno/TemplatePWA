@@ -2,6 +2,8 @@
 
 La capa de **Servicio** en la metodología Engrama corresponde a los controladores de la API, los cuales exponen los endpoints que la aplicación cliente (por ejemplo, el cliente Blazor PWA) consume. Esta capa actúa como la interfaz principal entre el cliente y la lógica de negocio implementada en la capa de Dominio, siguiendo un enfoque basado en **Clean Architecture** adaptado a las necesidades de Engrama. Este documento detalla la estructura, convenciones y ejemplos para los controladores, asegurando homogeneidad y facilidad de integración con las capas inferiores.
 
+> **EngramaCoreStandar:** los controladores no usan Dapper directamente. Devuelven `Response<T>` (`IsSuccess`, `Message`, `Data`) producido por Dominio vía `IResponseHelper`. El cliente Blazor deserializa ese envelope con `IHttpService` + `IValidaServicioService`. Ver [0- EngramaCoreStandar.md](0-%20EngramaCoreStandar.md) §§ 4 y 6.
+
 ## Estructura de la Capa de Servicio
 
 Los controladores en la capa de Servicio se organizan para reflejar los módulos definidos en las capas de Dominio e Infraestructura, garantizando consistencia en la nomenclatura y funcionalidad. Cada controlador se nombra según el módulo al que corresponde, alineándose con las clases de las capas inferiores. Por ejemplo:
@@ -142,6 +144,19 @@ public async Task<IActionResult> PostSaveTestTable([FromBody] DtoSaveTestTable D
 5. **Documentación**:
    - Incluir comentarios XML detallados para cada método, describiendo su propósito, parámetros y valor de retorno.
 
+## EngramaCoreStandar en Controllers
+
+Los controladores **no** referencian Dapper ni `MapperHelper`. Solo consumen:
+
+| Tipo | Paquete | Rol |
+|------|---------|-----|
+| `Response<T>` | `EngramaCoreStandar.Results` | Envelope uniforme (`IsSuccess` / `Message` / `Data`) |
+| Dominio | — | Produce el `Response<T>` vía `IResponseHelper` |
+
+El cliente Blazor lee el mismo envelope con `IHttpService` + `IValidaServicioService.ValidadionServicio`.
+Si el body llega con HTTP 400, `HttpService` aún puede deserializar `Response<T>` con `IsSuccess = false` (patrón Engrama).
+
+Registro API: `builder.Services.AddEngramaDependenciesAPI();` — ver [0- EngramaCoreStandar.md](0-%20EngramaCoreStandar.md) § 1.
 
 ## Recomendaciones
 
@@ -153,4 +168,4 @@ public async Task<IActionResult> PostSaveTestTable([FromBody] DtoSaveTestTable D
 
 ## Conclusión
 
-La capa de Servicio en la metodología Engrama, representada por los controladores, es la interfaz principal para la interacción entre la aplicación cliente y la lógica de negocio. Al seguir una nomenclatura homogénea, inyección de dependencias, y un formato estandarizado para los endpoints, esta capa garantiza una integración fluida con la capa de Dominio y una experiencia consistente para los desarrolladores. Los controladores, al delegar la lógica de negocio y devolver respuestas estandarizadas (`Response<T>`), aseguran que la API sea robusta, mantenible y escalable.
+La capa de Servicio en la metodología Engrama, representada por los controladores, es la interfaz principal para la interacción entre la aplicación cliente y la lógica de negocio. Al seguir una nomenclatura homogénea y el envelope `Response<T>` de **EngramaCoreStandar**, esta capa garantiza una integración fluida con Dominio y el cliente Blazor.

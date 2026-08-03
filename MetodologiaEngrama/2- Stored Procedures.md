@@ -2,6 +2,8 @@
 
 La metodología Engrama define un estándar riguroso para la creación de procedimientos almacenados (SPs) en la base de datos, garantizando homogeneidad, trazabilidad y compatibilidad con las entidades de la API. Este documento detalla la estructura, convenciones y ejemplos para los procedimientos almacenados, asegurando que sean consistentes y fáciles de integrar con la capa de infraestructura.
 
+> **EngramaCoreStandar:** cada SP se invoca desde C# con `IDapperManagerHelper` (`GetAsync`, `GetAllAsync`, `GetWithListAsync`, `GetAllWithListAsync`). Los campos `bResult` / `vchMessage` mapean a `DbResult`. Guía completa del paquete: [0- EngramaCoreStandar.md](0-%20EngramaCoreStandar.md). Tabla de helpers: [8- Guia Consultas SP.md](8-%20Guia%20Consultas%20SP.md).
+
 ## Tipos de Procedimientos Almacenados
 
 Engrama clasifica los procedimientos almacenados en dos categorías, según su propósito:
@@ -123,6 +125,143 @@ EXEC spGetConnectionString @iIdUser = 2, @bActivo = 1;
 GO
 
  ```
+
+## Procedimientos que reciben listas (Table-Valued Parameters / DataType)
+
+Además de parámetros escalares, Engrama permite enviar **colecciones** a SQL mediante un User-Defined Table Type (`DT*`). En la API eso se consume con `GetWithListAsync` / `GetAllWithListAsync` (ver `4- API y Capra Infraestrucura.md`).
+
+### Reglas
+
+1. Declarar el parámetro como `@NombreLista DTTipo READONLY` (siempre `READONLY`).
+2. El **nombre del parámetro** (`@Parameters`) debe coincidir con la propiedad `IEnumerable<DT*>` del `Request` en C# (`Parameters`).
+3. Usar la lista dentro del SP con `JOIN`, `EXISTS` o `INSERT … SELECT` desde la tabla-parámetro.
+4. Seguir devolviendo `bResult` + `vchMessage` como en cualquier otro SP Engrama.
+
+### Ejemplo Get con lista — `spGetTestTableDataType`
+
+Script de referencia: `BaseDatos/ScritpCompleto.sql`.
+
+```sql
+CREATE PROCEDURE [dbo].[spGetTestTableDataType]
+    @iIdTest_Table INT,
+    @vchName VARCHAR(50),
+    @vchEmail VARCHAR(50),
+    @dtRegistered DATETIME,
+    @Parameters DTParameterType READONLY   -- lista enviada desde la API
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Result TABLE
+    (
+        bResult BIT DEFAULT (1),
+        vchMessage VARCHAR(500) DEFAULT(''),
+        iIdTest_Table INT DEFAULT (-1),
+        vchName VARCHAR(100) DEFAULT (''),
+        vchEmail VARCHAR(100) DEFAULT (''),
+        dtRegistered DATETIME DEFAULT ('1900-01-01')
+    );
+
+    BEGIN TRY
+        -- Si la lista trae IDs (iParameter > 0), filtrar por ellos;
+        -- si viene vacía, devolver todos (demo).
+        INSERT INTO @Result (iIdTest_Table, vchName, vchEmail, dtRegistered)
+        SELECT TT.iIdTest_Table, TT.vchName, TT.vchEmail, TT.dtRegistered
+        FROM dbo.Test_Table TT WITH (NOLOCK)
+        WHERE
+            NOT EXISTS (SELECT 1 FROM @Parameters P WHERE P.iParameter > 0)
+            OR EXISTS (
+                SELECT 1
+                FROM @Parameters P
+                WHERE P.iParameter = TT.iIdTest_Table
+            );
+
+        IF NOT EXISTS (SELECT 1 FROM @Result WHERE iIdTest_Table != -1)
+        BEGIN
+            INSERT INTO @Result (bResult, vchMessage)
+            VALUES (0, 'No se encontraron registros.');
+        END
+    END TRY
+    BEGIN CATCH
+        INSERT INTO @Result (bResult, vchMessage)
+        SELECT 0, CONCAT(ERROR_PROCEDURE(), ' : ', ERROR_MESSAGE(), ' - ', ERROR_LINE());
+    END CATCH;
+
+    SELECT * FROM @Result;
+END
+GO
+```
+
+### Ejemplo de ejecución en SSMS
+
+```sql
+DECLARE @Lista AS DTParameterType;
+
+INSERT INTO @Lista (iParameter, vchParameter, dtParameter, mParametr, smParameter, bParameter)
+VALUES
+    (1, 'filtro-a', '1900-01-01', 0, 0, 0),
+    (2, 'filtro-b', '1900-01-01', 0, 0, 0);
+
+EXEC dbo.spGetTestTableDataType
+    @iIdTest_Table = 0,
+    @vchName = '',
+    @vchEmail = '',
+    @dtRegistered = '1900-01-01',
+    @Parameters = @Lista;
+```
+
+### Ejemplo Save con lista (patrón batch)
+
+Útil para insertar/actualizar varios ítems en una sola llamada:
+
+```sql
+-- Tipo
+CREATE TYPE dbo.DTTest_TableItem AS TABLE
+(
+    iIdTest_Table INT NOT NULL,
+    vchName VARCHAR(100) NOT NULL,
+    vchEmail VARCHAR(100) NOT NULL,
+    dtRegistered DATETIME NOT NULL
+);
+GO
+
+ALTER PROCEDURE dbo.spSaveTest_TableBatch
+    @Items DTTest_TableItem READONLY
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @vchError VARCHAR(200) = '';
+    DECLARE @Result TABLE (bResult BIT DEFAULT(1), vchMessage VARCHAR(500) DEFAULT(''), iRowsAffected INT DEFAULT(0));
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        MERGE dbo.Test_Table AS T
+        USING @Items AS S
+            ON T.iIdTest_Table = S.iIdTest_Table AND S.iIdTest_Table > 0
+        WHEN MATCHED THEN
+            UPDATE SET vchName = S.vchName, vchEmail = S.vchEmail, dtRegistered = S.dtRegistered
+        WHEN NOT MATCHED THEN
+            INSERT (vchName, vchEmail, dtRegistered)
+            VALUES (S.vchName, S.vchEmail, S.dtRegistered);
+
+        INSERT INTO @Result (bResult, vchMessage, iRowsAffected)
+        VALUES (1, '', @@ROWCOUNT);
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        SET @vchError = CONCAT(ERROR_PROCEDURE(), ': ', ERROR_MESSAGE());
+        INSERT INTO @Result (bResult, vchMessage) VALUES (0, @vchError);
+    END CATCH;
+
+    SELECT * FROM @Result;
+END
+GO
+```
+
+En C#, el `Request` llevaría `IEnumerable<DTTest_TableItem> Items` y el repositorio usaría `GetWithListAsync` (un resultado) o `GetAllWithListAsync` (varios resultados).
 
  ## Ejemplo de Procedimiento Almacenado: Tipo Save
 
@@ -269,3 +408,18 @@ END
 GO
 
  ```
+
+## EngramaCoreStandar ↔ procedimientos
+
+Cada SP Engrama se invoca desde Infrastructure con `IDapperManagerHelper`:
+
+| Forma del SP | Helper |
+|--------------|--------|
+| Sin lista, 1 fila (`Save` / detalle) | `GetAsync` |
+| Sin lista, N filas | `GetAllAsync` |
+| Con TVP (`@Lista DT* READONLY`), 1 fila | `GetWithListAsync` |
+| Con TVP, N filas | `GetAllWithListAsync` |
+
+Los campos `bResult` / `vchMessage` del SELECT final mapean a `DbResult`.
+Guía: [8- Guia Consultas SP.md](8-%20Guia%20Consultas%20SP.md) · Paquete: [0- EngramaCoreStandar.md](0-%20EngramaCoreStandar.md).
+

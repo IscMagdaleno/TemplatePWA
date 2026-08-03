@@ -12,11 +12,11 @@ namespace TemplatePWA.API.Controllers
 	[Route("api/[controller]")]
 	public class TestController : ControllerBase
 	{
-		private readonly ITestDominio testDominio;
+		private readonly ITestDomain testDomain;
 
-		public TestController(ITestDominio testDominio)
+		public TestController(ITestDomain testDomain)
 		{
-			this.testDominio = testDominio;
+			this.testDomain = testDomain;
 		}
 
 
@@ -28,7 +28,7 @@ namespace TemplatePWA.API.Controllers
 		[HttpPost("PostTestTable")]
 		public async Task<IActionResult> PostTestTable([FromBody] DtoTestTable postModel)
 		{
-			var result = await testDominio.TestTable(postModel);
+			var result = await testDomain.TestTable(postModel);
 			if (result.IsSuccess)
 			{
 				return Ok(result);
@@ -45,7 +45,7 @@ namespace TemplatePWA.API.Controllers
 		[HttpPost("PostSaveTest_Table")]
 		public async Task<IActionResult> PostSaveTest_Table([FromBody] DtoaveTest_Table postModel)
 		{
-			var result = await testDominio.SaveTest_Table(postModel);
+			var result = await testDomain.SaveTest_Table(postModel);
 			if (result.IsSuccess)
 			{
 				return Ok(result);
@@ -54,14 +54,13 @@ namespace TemplatePWA.API.Controllers
 		}
 
 		/// <summary>
-		/// Consultar la base de datos enviando una lista de objetos
+		/// Demo Engrama: envía una lista (TVP DTParameterType) al SP spGetTestTableDataType.
+		/// Body.Parameters[].iParameter = iIdTest_Table a filtrar; lista vacía o sin IDs &gt; 0 = todos.
 		/// </summary>
-		/// <param name="postModel"></param>
-		/// <returns></returns>
 		[HttpPost("PostGetTestTableDataType")]
 		public async Task<IActionResult> PostGetTestTableDataType([FromBody] DtoGetTestTableDataType postModel)
 		{
-			var result = await testDominio.GetTestTableDataType(postModel);
+			var result = await testDomain.GetTestTableDataType(postModel);
 			if (result.IsSuccess)
 			{
 				return Ok(result);

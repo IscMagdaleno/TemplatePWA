@@ -15,6 +15,7 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\TemplatePWA.Share\TemplatePWA.Share.csproj" />
+	  <ProjectReference Include="..\..\EngramaCoreStandar\EngramaCoreStandar\EngramaCoreStandar.csproj" />
 	</ItemGroup>
 	
 	<ItemGroup>
