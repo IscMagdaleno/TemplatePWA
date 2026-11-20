@@ -1,11 +1,11 @@
 # TemplatePWA — Engrama Agent Rules (Antigravity / AGENTS.md)
 
 You are working in an Engrama Clean Architecture Blazor WASM PWA template.
-Follow the methodology docs in `MetodologiaEngrama/` as the source of truth.
+This file is the shared source of truth. `GEMINI.md` and `MetodologiaEngrama/` apply only where they do not conflict with it.
 
 > This file is the **cross-tool** rules document for **Antigravity** (and other agents that read `AGENTS.md`).
 > Cursor-specific mirrors: `.cursorrules` and `.cursor/rules/`.
-> Antigravity-specific overrides: `GEMINI.md` (wins on conflict) and `.agent/rules/`.
+> Antigravity notes: `GEMINI.md` (this file wins on conflict) and `.agent/rules/`.
 
 ## Mandatory documentation
 
@@ -19,7 +19,7 @@ Before adding or changing features, align with the relevant doc:
 | `MetodologiaEngrama/3- Solucion base y proyecto Share.md` | Solution layout, Share `Objects` / `DtoModels` |
 | `MetodologiaEngrama/4- API y Capra Infraestrucura.md` | Repository, Entities `sp*`, `IDapperManagerHelper` |
 | `MetodologiaEngrama/5- Dominio.md` | Domain, `MapperHelper`, `IResponseHelper` |
-| `MetodologiaEngrama/6- Servicio.md` | Controllers — thin, return `Response<T>` |
+| `MetodologiaEngrama/6- Servicio.md` | Controllers — thin, return `Response<T>`. Route names follow [HTTP endpoint names](#http-endpoint-names), not the DTO-class examples in that doc |
 | `MetodologiaEngrama/7- Cliente.md` | PWA modules, `Main*`, workspace tabs |
 | `MetodologiaEngrama/8- Guia Consultas SP.md` | Which Dapper helper to use |
 
@@ -85,10 +85,48 @@ Prefer business rules in stored procedures when Engrama style allows; Domain onl
 2. Share: `Objects` + `DtoModels`.
 3. Infrastructure: `DT*` (if TVP) + `sp*` entity + Repository method.
 4. Domain: map DTO → Request; assign TVP lists explicitly (never leave null).
-5. Controller: thin POST; return `Ok(result)` / `BadRequest(result)`.
-6. PWA: `Main*` method + Grid/Form; register workspace tab if CRUD.
+5. Controller: thin `POST api/{Controller}/Post{Action}` (the C# method name). The DTO is the `[FromBody]` type, not the route. Return `Ok(result)` / `BadRequest(result)`. See [HTTP endpoint names](#http-endpoint-names).
+6. PWA: `Main*` calls that same `Post…` route + Grid/Form; register workspace tab if CRUD.
 
 Match names across SQL ↔ C# properties ↔ DTO fields.
+
+## HTTP endpoint names
+
+Where `GEMINI.md` or `MetodologiaEngrama/` names a route differently, this section wins. The convention is the one ConectaControl uses.
+
+- Controller: `[Route("api/[controller]")]`.
+- The action is `[HttpPost("…")]`. The template is the C# method name and starts with `Post`.
+- The Share DTO is only the `[FromBody]` type. It is not the route segment.
+- A module controller with one read and one write uses `PostGet` and `PostSave` (`api/Producto/PostGet`, `api/Producto/PostSave`; bodies `DtoGetProducto`, `DtoSaveProducto`).
+- Extra actions keep the same prefix and the method name (`PostGetListas`, `PostSaveLista`, `PostValidar`). Do not splice the DTO class into the route.
+- The Test module to copy uses `PostTestTable`, `PostSaveTest_Table`, and `PostGetTestTableDataType`. Not `DtoTestTable`.
+- The client calls that exact path. Do not invent `PostSaveRegistro` or `GetProducts` when the action is `PostSave` or `PostGet`.
+
+Do not copy these older texts when they disagree:
+
+- `MetodologiaEngrama/3- Solucion base y proyecto Share.md`: `[HttpPost("DtoSaveUsuarios")]`.
+- `MetodologiaEngrama/6- Servicio.md` prose that sets the method name to the DTO class (`DtoTestTable`). The code samples in that doc that already say `PostTestTable` and `PostSaveTestTable` match this rule; the prose does not.
+- `MetodologiaEngrama/7- Cliente.md` samples that call `PostGetRegistros` or `PostSaveRegistro` against a controller whose actions are `PostGet` and `PostSave`.
+
+ConectaControl's only routes without the `Post` prefix are the four `AzureBlobController` uploads (`UploadImage-tickets`, `UploadImage-logos`, `UploadImage-buzon`, `UploadImage-productos`). New endpoints do not copy that shape. There is no `HttpGet`, `HttpPut`, `HttpDelete`, or `HttpPatch` on those controllers.
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class ProductoController : ControllerBase
+{
+    /// <summary>Saves a product. Route: api/Producto/PostSave.</summary>
+    [HttpPost("PostSave")]
+    public async Task<IActionResult> PostSave([FromBody] DtoSaveProducto postModel)
+    {
+        var result = await domain.SaveProducto(postModel);
+        if (result.IsSuccess) return Ok(result);
+        return BadRequest(result);
+    }
+}
+```
+
+The domain method stays `SaveProducto` (no `Post`, no `sp`). The HTTP route is `PostSave`.
 
 ## Comments (required)
 
@@ -134,6 +172,7 @@ public async Task<Response<Test_Table>> SaveTest_Table(DtoSaveTest_Table postMod
 - Putting `EntityId` / `IsNewTab` / `ForceNewTab` in `DynamicComponent` Parameters.
 - Leaving TVP `IEnumerable` null on Request.
 - Renaming package to “EngramaCoreStandard”.
+- Naming an HTTP route after the DTO class (`DtoSaveProducto`, `DtoSaveUsuarios`, `DtoTestTable`) or dropping the `Post` prefix (`Save`, `GetProducts`).
 - Fat controllers or UI that duplicates Domain logic.
 - Uncommented public API surface.
 
