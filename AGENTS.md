@@ -181,3 +181,11 @@ public async Task<Response<Test_Table>> SaveTest_Table(DtoSaveTest_Table postMod
 - After C# changes, prefer verifying with `dotnet build` on the affected project(s).
 - Keep Share ↔ API ↔ PWA contracts aligned when changing DTOs.
 - If SQL scripts change, call out that the partner must apply them on the Engrama database.
+
+## Documentación y entrega al coordinador
+
+Cuando el humano termina la UI (mock o implementación real) de un módulo o pantalla, el agente del repo **debe** escribir o actualizar **`docs/agentes/handoff-ui.md`** antes de cerrar la sesión (crear `docs/agentes/` si no existe). Contenido en **español**: fecha (`America/Mexico_City`), módulo, rutas, estados de UI, forma de datos (campos reales, no lorem literal), archivos tocados, pendientes para el coordinador (documentación técnica, manual de usuario, E2E), estado **`ui-lista`**. Si el archivo ya cubre otro feature, añadir sección o usar `handoff-ui-{modulo}.md` y listarlo en `docs/agentes/README.md`.
+
+El humano puede trabajar en el chat del repo; al terminar la UI va al **Proyecto Conecta** y dice **«UI lista en {repo}»**. El coordinador lee el handoff con un worker.
+
+**Después de aceptar la UI:** el coordinador dispara documentación técnica, manual de usuario y pruebas E2E. En features nuevas, **no** avanzar back-end (SP, API, Domain) hasta que el handoff indique `ui-lista` y el Proyecto ordene la siguiente fase.
